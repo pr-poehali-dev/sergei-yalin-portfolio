@@ -54,7 +54,8 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+    background: hsl(252 30% 6%);
     font-family: "Golos Text", sans-serif;
   }
 
