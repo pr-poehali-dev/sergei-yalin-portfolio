@@ -63,8 +63,14 @@ const Index = () => {
 
     let fileBase64: string | null = null;
     if (form.fileObj) {
-      const buf = await form.fileObj.arrayBuffer();
-      fileBase64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+      fileBase64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          resolve(result.split(',')[1]);
+        };
+        reader.readAsDataURL(form.fileObj!);
+      });
     }
 
     const res = await fetch(UPLOAD_TRACK_URL, {
