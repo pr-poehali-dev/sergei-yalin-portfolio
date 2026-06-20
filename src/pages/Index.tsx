@@ -26,11 +26,15 @@ const nav = [
   { id: 'contact', label: 'Контакты' },
 ];
 
+const BIO_PLACEHOLDER = 'Напишите здесь свою биографию и историю творчества...';
+
 const Index = () => {
   const [tracks, setTracks] = useState<Track[]>(initialTracks);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<{ title: string; type: 'music' | 'poem'; text: string; fileName: string; url: string }>({ title: '', type: 'poem', text: '', fileName: '', url: '' });
   const fileRef = useRef<HTMLInputElement>(null);
+  const [bio, setBio] = useState('');
+  const [bioEditing, setBioEditing] = useState(false);
 
   const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
 
@@ -103,8 +107,41 @@ const Index = () => {
           <div>
             <p className="mb-3 text-sm uppercase tracking-[0.3em] text-primary/80">Биография</p>
             <h2 className="font-display text-4xl md:text-5xl">История творчества</h2>
-            <div className="mt-6 leading-relaxed text-muted-foreground/60 italic">
-              <p>Здесь скоро появится биография — Сергей напишет её сам.</p>
+            <div className="mt-6">
+              {bioEditing ? (
+                <div className="space-y-3">
+                  <Textarea
+                    autoFocus
+                    rows={8}
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    placeholder={BIO_PLACEHOLDER}
+                    className="border-primary/30 bg-background/60 leading-relaxed text-foreground backdrop-blur-sm"
+                  />
+                  <div className="flex gap-3">
+                    <Button size="sm" onClick={() => setBioEditing(false)} className="rounded-full px-6">
+                      <Icon name="Check" size={15} className="mr-1" /> Сохранить
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => { setBioEditing(false); }} className="rounded-full border-primary/30 bg-transparent px-6">
+                      Отмена
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  onClick={() => setBioEditing(true)}
+                  className="group relative cursor-text rounded-xl border border-dashed border-primary/20 p-4 transition-colors hover:border-primary/50"
+                >
+                  {bio ? (
+                    <p className="whitespace-pre-wrap leading-relaxed text-muted-foreground">{bio}</p>
+                  ) : (
+                    <p className="italic text-muted-foreground/50">{BIO_PLACEHOLDER}</p>
+                  )}
+                  <span className="absolute right-3 top-3 flex items-center gap-1 text-xs text-primary/0 transition-all group-hover:text-primary/70">
+                    <Icon name="Pencil" size={12} /> редактировать
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
