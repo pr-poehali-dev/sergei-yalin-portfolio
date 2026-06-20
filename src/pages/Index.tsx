@@ -225,12 +225,10 @@ const Index = () => {
       <section id="gallery" className="mx-auto max-w-5xl px-6 py-20">
         <p className="mb-3 text-center text-sm uppercase tracking-[0.3em] text-primary/80">Галерея</p>
         <h2 className="text-center font-display text-4xl md:text-5xl">Личные фото и портреты</h2>
-        <div className="mt-12 grid gap-4 sm:grid-cols-3">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className={`group overflow-hidden rounded-xl border border-primary/20 ${i === 1 ? 'sm:-translate-y-6' : ''}`}>
-              <img src={PORTRAIT} alt={`Фото ${i + 1}`} className="h-72 w-full object-cover transition-transform duration-700 group-hover:scale-110" />
-            </div>
-          ))}
+        <div className="mt-12 flex justify-center">
+          <div className="group overflow-hidden rounded-xl border border-primary/20 max-w-sm w-full">
+            <img src={PORTRAIT} alt="Сергей Ялин" className="h-72 w-full object-cover transition-transform duration-700 group-hover:scale-110" />
+          </div>
         </div>
       </section>
 
