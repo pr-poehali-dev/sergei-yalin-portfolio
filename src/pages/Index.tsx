@@ -56,29 +56,32 @@ const Index = () => {
     setForm((f) => ({ ...f, fileName: file.name, fileObj: file, title: f.title || file.name.replace(/\.[^.]+$/, '') }));
   };
 
+  const UPLOAD_URL = 'https://functions.poehali.dev/0a5e2867-4697-442f-949a-3d22bf2abb58';
+
   const addWork = async () => {
     if (!form.title.trim()) return;
     if (form.type === 'music' && !form.fileObj) return;
     setUploading(true);
 
     try {
-      // Шаг 1: получаем от сервера presigned URL и создаём запись в БД
-      const res = await fetch(GET_UPLOAD_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: form.title, type: form.type, text: form.text, fileName: form.fileName }),
-      });
-      const data = await res.json();
-
-      // Шаг 2: если это трек — грузим файл напрямую в S3 без лишних заголовков
-      if (form.type === 'music' && form.fileObj && data.upload_url) {
-        await fetch(data.upload_url, {
-          method: 'PUT',
-          body: form.fileObj,
+      let res: Response;
+      if (form.type === 'music' && form.fileObj) {
+        const fd = new FormData();
+        fd.append('title', form.title);
+        fd.append('type', form.type);
+        fd.append('text', form.text);
+        fd.append('file', form.fileObj, form.fileName);
+        res = await fetch(UPLOAD_URL, { method: 'POST', body: fd });
+      } else {
+        res = await fetch(UPLOAD_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: form.title, type: form.type, text: form.text }),
         });
       }
 
-      setTracks((prev) => [{ id: data.id, title: data.title, type: data.type, text: data.text, url: data.cdn_url }, ...prev]);
+      const data = await res.json();
+      setTracks((prev) => [{ id: data.id, title: data.title, type: data.type, text: data.text, url: data.url }, ...prev]);
       setForm({ title: '', type: 'poem', text: '', fileName: '', fileObj: null });
       setOpen(false);
     } finally {
