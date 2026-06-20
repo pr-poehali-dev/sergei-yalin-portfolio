@@ -1,0 +1,13 @@
+{
+  "tests": [
+    {
+      "name": "Upload poem without file",
+      "method": "POST",
+      "path": "/",
+      "body": {"title": "Тест стих", "type": "poem", "text": "Строка первая"},
+      "expectedStatus": 200,
+      "expectedBody": {"type": "poem"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

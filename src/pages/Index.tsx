@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Icon from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,29 +26,56 @@ const nav = [
   { id: 'contact', label: 'Контакты' },
 ];
 
+const GET_TRACKS_URL = 'https://functions.poehali.dev/2bc5f2f3-4a26-4ed3-89d2-76c4ea5b3df0';
+const UPLOAD_TRACK_URL = 'https://functions.poehali.dev/0a5e2867-4697-442f-949a-3d22bf2abb58';
+
 const BIO_PLACEHOLDER = 'Напишите здесь свою биографию и историю творчества...';
 
 const Index = () => {
-  const [tracks, setTracks] = useState<Track[]>(initialTracks);
+  const [tracks, setTracks] = useState<Track[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<{ title: string; type: 'music' | 'poem'; text: string; fileName: string; url: string }>({ title: '', type: 'poem', text: '', fileName: '', url: '' });
+  const [form, setForm] = useState<{ title: string; type: 'music' | 'poem'; text: string; fileName: string; fileObj: File | null }>({ title: '', type: 'poem', text: '', fileName: '', fileObj: null });
   const fileRef = useRef<HTMLInputElement>(null);
   const [bio, setBio] = useState('');
   const [bioEditing, setBioEditing] = useState(false);
 
   const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
 
+  useEffect(() => {
+    fetch(GET_TRACKS_URL)
+      .then((r) => r.json())
+      .then((data) => setTracks(data.tracks || []))
+      .finally(() => setLoading(false));
+  }, []);
+
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setForm((f) => ({ ...f, fileName: file.name, url: URL.createObjectURL(file), title: f.title || file.name.replace(/\.[^.]+$/, '') }));
+    setForm((f) => ({ ...f, fileName: file.name, fileObj: file, title: f.title || file.name.replace(/\.[^.]+$/, '') }));
   };
 
-  const addWork = () => {
+  const addWork = async () => {
     if (!form.title.trim()) return;
-    if (form.type === 'music' && !form.url) return;
-    setTracks([{ id: Date.now(), title: form.title, type: form.type, text: form.type === 'poem' ? form.text : undefined, url: form.type === 'music' ? form.url : undefined }, ...tracks]);
-    setForm({ title: '', type: 'poem', text: '', fileName: '', url: '' });
+    if (form.type === 'music' && !form.fileObj) return;
+    setUploading(true);
+
+    let fileBase64: string | null = null;
+    if (form.fileObj) {
+      const buf = await form.fileObj.arrayBuffer();
+      fileBase64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+    }
+
+    const res = await fetch(UPLOAD_TRACK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: form.title, type: form.type, text: form.text, file: fileBase64, fileName: form.fileName }),
+    });
+    const newTrack = await res.json();
+    setTracks((prev) => [newTrack, ...prev]);
+    setForm({ title: '', type: 'poem', text: '', fileName: '', fileObj: null });
+    setUploading(false);
     setOpen(false);
   };
 
@@ -173,6 +200,14 @@ const Index = () => {
         </div>
 
         <div className="mt-10 space-y-4">
+          {loading && (
+            <div className="flex items-center justify-center py-12 text-muted-foreground">
+              <Icon name="Loader2" size={24} className="mr-3 animate-spin" /> Загружаю...
+            </div>
+          )}
+          {!loading && tracks.length === 0 && (
+            <div className="py-12 text-center text-muted-foreground/60 italic">Пока нет произведений — нажмите «Загрузить», чтобы добавить первое.</div>
+          )}
           {tracks.map((t) => (
             <div key={t.id} className="rounded-xl border border-primary/15 bg-card/60 p-6 backdrop-blur-sm transition-colors hover:border-primary/40">
               <div className="flex items-start gap-4">
@@ -247,8 +282,10 @@ const Index = () => {
               )}
               <input ref={fileRef} type="file" accept="audio/*" className="hidden" onChange={onFile} />
               <div className="flex gap-3 pt-2">
-                <Button variant="outline" className="flex-1 border-primary/30 bg-transparent" onClick={() => setOpen(false)}>Отмена</Button>
-                <Button className="flex-1" onClick={addWork}>Добавить</Button>
+                <Button variant="outline" className="flex-1 border-primary/30 bg-transparent" onClick={() => setOpen(false)} disabled={uploading}>Отмена</Button>
+                <Button className="flex-1" onClick={addWork} disabled={uploading}>
+                  {uploading ? <><Icon name="Loader2" size={16} className="mr-2 animate-spin" />Загружаю...</> : 'Добавить'}
+                </Button>
               </div>
             </div>
           </div>
