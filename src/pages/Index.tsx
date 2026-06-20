@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 
 const PORTRAIT = 'https://cdn.poehali.dev/projects/8df8bdc8-b92a-4058-b356-f15e068f718c/bucket/0688c4ea-5a52-4d9c-a51b-ccb0a4c91d81.jpg';
-const BG = 'https://cdn.poehali.dev/projects/8df8bdc8-b92a-4058-b356-f15e068f718c/files/38f8a1de-8b3b-45d7-a77d-746a34e1d18d.jpg';
+const BG = 'https://cdn.poehali.dev/projects/8df8bdc8-b92a-4058-b356-f15e068f718c/files/64a6cf34-0c87-411f-ab72-0fb5fe05c266.jpg';
 
 interface Track {
   id: number;
@@ -51,10 +51,10 @@ const Index = () => {
   return (
     <div className="grain relative min-h-screen overflow-x-hidden bg-background text-foreground">
       <div
-        className="animate-drift pointer-events-none fixed inset-0 -z-10 bg-cover bg-center opacity-40"
+        className="animate-drift pointer-events-none fixed inset-0 -z-10 bg-cover bg-center opacity-70"
         style={{ backgroundImage: `url(${BG})` }}
       />
-      <div className="pointer-events-none fixed inset-0 -z-10 bg-gradient-to-b from-background/60 via-background/85 to-background" />
+      <div className="pointer-events-none fixed inset-0 -z-10 bg-gradient-to-b from-background/40 via-background/70 to-background" />
 
       {/* NAV */}
       <header className="fixed top-0 z-40 w-full backdrop-blur-md">
