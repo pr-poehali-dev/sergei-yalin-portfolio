@@ -11,7 +11,7 @@ def handler(event: dict, context) -> dict:
     cur = conn.cursor()
     schema = os.environ['MAIN_DB_SCHEMA']
 
-    cur.execute(f'SELECT id, title, type, text, cdn_url FROM {schema}.tracks ORDER BY created_at DESC')
+    cur.execute(f'SELECT id, title, type, text, cdn_url FROM {schema}.tracks WHERE hidden IS NOT TRUE ORDER BY created_at DESC')
     rows = cur.fetchall()
     cur.close()
     conn.close()
