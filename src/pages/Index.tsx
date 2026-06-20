@@ -27,7 +27,7 @@ const nav = [
 ];
 
 const GET_TRACKS_URL = 'https://functions.poehali.dev/2bc5f2f3-4a26-4ed3-89d2-76c4ea5b3df0';
-const UPLOAD_TRACK_URL = 'https://functions.poehali.dev/0a5e2867-4697-442f-949a-3d22bf2abb58';
+const GET_UPLOAD_URL = 'https://functions.poehali.dev/348e1c75-0fff-4df4-b020-ac71ecc5d8b9';
 
 const BIO_PLACEHOLDER = 'Напишите здесь свою биографию и историю творчества...';
 
@@ -61,28 +61,30 @@ const Index = () => {
     if (form.type === 'music' && !form.fileObj) return;
     setUploading(true);
 
-    let fileBase64: string | null = null;
-    if (form.fileObj) {
-      fileBase64 = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string;
-          resolve(result.split(',')[1]);
-        };
-        reader.readAsDataURL(form.fileObj!);
+    try {
+      // Шаг 1: получаем от сервера presigned URL и создаём запись в БД
+      const res = await fetch(GET_UPLOAD_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: form.title, type: form.type, text: form.text, fileName: form.fileName }),
       });
-    }
+      const data = await res.json();
 
-    const res = await fetch(UPLOAD_TRACK_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: form.title, type: form.type, text: form.text, file: fileBase64, fileName: form.fileName }),
-    });
-    const newTrack = await res.json();
-    setTracks((prev) => [newTrack, ...prev]);
-    setForm({ title: '', type: 'poem', text: '', fileName: '', fileObj: null });
-    setUploading(false);
-    setOpen(false);
+      // Шаг 2: если это трек — грузим файл напрямую в S3
+      if (form.type === 'music' && form.fileObj && data.upload_url) {
+        await fetch(data.upload_url, {
+          method: 'PUT',
+          headers: { 'Content-Type': data.content_type },
+          body: form.fileObj,
+        });
+      }
+
+      setTracks((prev) => [{ id: data.id, title: data.title, type: data.type, text: data.text, url: data.cdn_url }, ...prev]);
+      setForm({ title: '', type: 'poem', text: '', fileName: '', fileObj: null });
+      setOpen(false);
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (

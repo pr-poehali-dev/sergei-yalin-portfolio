@@ -1,0 +1,13 @@
+{
+  "tests": [
+    {
+      "name": "Get upload URL for poem",
+      "method": "POST",
+      "path": "/",
+      "body": {"title": "Тест стих", "type": "poem", "text": "Строка первая"},
+      "expectedStatus": 200,
+      "expectedBody": {"type": "poem"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
