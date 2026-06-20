@@ -1,15 +1,220 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState, useRef } from 'react';
+import Icon from '@/components/ui/icon';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+
+const PORTRAIT = 'https://cdn.poehali.dev/projects/8df8bdc8-b92a-4058-b356-f15e068f718c/files/04f92814-4f8e-4f77-91e5-fa0a86bc8ee6.jpg';
+const BG = 'https://cdn.poehali.dev/projects/8df8bdc8-b92a-4058-b356-f15e068f718c/files/38f8a1de-8b3b-45d7-a77d-746a34e1d18d.jpg';
+
+interface Track {
+  id: number;
+  title: string;
+  type: 'music' | 'poem';
+  text?: string;
+  url?: string;
+}
+
+const initialTracks: Track[] = [
+  { id: 1, title: 'Туман над рекой', type: 'music', url: '' },
+  { id: 2, title: 'Молчание звёзд', type: 'poem', text: 'Когда молчат вечерние огни,\nи город тонет в сумрачной дали —\nя слышу, как поют твои шаги\nв беззвучной музыке земли.' },
+  { id: 3, title: 'Северный ветер', type: 'music', url: '' },
+];
+
+const nav = [
+  { id: 'about', label: 'Биография' },
+  { id: 'gallery', label: 'Галерея' },
+  { id: 'works', label: 'Творчество' },
+  { id: 'contact', label: 'Контакты' },
+];
 
 const Index = () => {
+  const [tracks, setTracks] = useState<Track[]>(initialTracks);
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState<{ title: string; type: 'music' | 'poem'; text: string }>({ title: '', type: 'poem', text: '' });
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+
+  const addWork = () => {
+    if (!form.title.trim()) return;
+    setTracks([{ id: Date.now(), title: form.title, type: form.type, text: form.type === 'poem' ? form.text : undefined }, ...tracks]);
+    setForm({ title: '', type: 'poem', text: '' });
+    setOpen(false);
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4 color-black text-black">Добро пожаловать!</h1>
-        <p className="text-xl text-gray-600">тут будет отображаться ваш проект</p>
-      </div>
-      <span className="absolute bottom-8 left-1/2 -translate-x-1/2 inline-block bg-[#FF6637] text-white text-sm px-4 py-2 rounded-full whitespace-nowrap">
-        Подождите 5 минут, Юра создает первую версию проекта с нуля
-      </span>
+    <div className="grain relative min-h-screen overflow-x-hidden bg-background text-foreground">
+      <div
+        className="animate-drift pointer-events-none fixed inset-0 -z-10 bg-cover bg-center opacity-40"
+        style={{ backgroundImage: `url(${BG})` }}
+      />
+      <div className="pointer-events-none fixed inset-0 -z-10 bg-gradient-to-b from-background/60 via-background/85 to-background" />
+
+      {/* NAV */}
+      <header className="fixed top-0 z-40 w-full backdrop-blur-md">
+        <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
+          <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="font-display text-2xl tracking-wide text-gradient-gold">
+            Сергей Ялин
+          </button>
+          <div className="hidden gap-8 md:flex">
+            {nav.map((n) => (
+              <button key={n.id} onClick={() => scrollTo(n.id)} className="text-sm uppercase tracking-widest text-muted-foreground transition-colors hover:text-primary">
+                {n.label}
+              </button>
+            ))}
+          </div>
+        </nav>
+      </header>
+
+      {/* HERO */}
+      <section className="relative flex min-h-screen items-center justify-center px-6 text-center">
+        <div className="animate-float-up max-w-3xl">
+          <p className="mb-6 text-sm uppercase tracking-[0.4em] text-primary/80">поэт · музыкант</p>
+          <h1 className="font-display text-6xl leading-none md:text-8xl">
+            Между словом<br /><span className="italic text-gradient-gold">и тишиной</span>
+          </h1>
+          <p className="mx-auto mt-8 max-w-xl text-lg leading-relaxed text-muted-foreground">
+            Стихи и музыка Сергея Ялина — попытка уловить то, что живёт за гранью обыденного. Голос, рождённый из сумрака и света.
+          </p>
+          <div className="mt-10 flex flex-wrap justify-center gap-4">
+            <Button size="lg" onClick={() => scrollTo('works')} className="rounded-full px-8">
+              <Icon name="Music" size={18} className="mr-2" /> Слушать и читать
+            </Button>
+            <Button size="lg" variant="outline" onClick={() => scrollTo('about')} className="rounded-full border-primary/40 bg-transparent px-8">
+              О авторе
+            </Button>
+          </div>
+        </div>
+        <Icon name="ChevronDown" size={28} className="absolute bottom-10 animate-bounce text-primary/60" />
+      </section>
+
+      {/* ABOUT */}
+      <section id="about" className="mx-auto max-w-5xl px-6 py-28">
+        <div className="grid items-center gap-12 md:grid-cols-2">
+          <div className="mist-glow overflow-hidden rounded-2xl border border-primary/20">
+            <img src={PORTRAIT} alt="Сергей Ялин" className="h-full w-full object-cover" />
+          </div>
+          <div>
+            <p className="mb-3 text-sm uppercase tracking-[0.3em] text-primary/80">Биография</p>
+            <h2 className="font-display text-4xl md:text-5xl">История творчества</h2>
+            <div className="mt-6 space-y-4 leading-relaxed text-muted-foreground">
+              <p>Сергей Ялин начал писать стихи в ранней юности, находя в словах убежище от шумного мира. Со временем строки обрели мелодию — так родилась его музыка.</p>
+              <p>Его творчество — это сплав поэзии и звука, где каждая композиция становится отдельной маленькой вселенной, полной тумана, света и тихой меланхолии.</p>
+              <p>Сегодня Сергей продолжает создавать произведения, в которых слово и музыка существуют как единое целое.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* GALLERY */}
+      <section id="gallery" className="mx-auto max-w-5xl px-6 py-20">
+        <p className="mb-3 text-center text-sm uppercase tracking-[0.3em] text-primary/80">Галерея</p>
+        <h2 className="text-center font-display text-4xl md:text-5xl">Личные фото и портреты</h2>
+        <div className="mt-12 grid gap-4 sm:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className={`group overflow-hidden rounded-xl border border-primary/20 ${i === 1 ? 'sm:-translate-y-6' : ''}`}>
+              <img src={PORTRAIT} alt={`Фото ${i + 1}`} className="h-72 w-full object-cover transition-transform duration-700 group-hover:scale-110" />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* WORKS */}
+      <section id="works" className="mx-auto max-w-5xl px-6 py-28">
+        <div className="flex flex-wrap items-end justify-between gap-6">
+          <div>
+            <p className="mb-3 text-sm uppercase tracking-[0.3em] text-primary/80">Творчество</p>
+            <h2 className="font-display text-4xl md:text-5xl">Треки и стихи</h2>
+          </div>
+          <Button onClick={() => setOpen(true)} variant="outline" className="rounded-full border-primary/40 bg-transparent">
+            <Icon name="Plus" size={18} className="mr-2" /> Загрузить
+          </Button>
+        </div>
+
+        <div className="mt-10 space-y-4">
+          {tracks.map((t) => (
+            <div key={t.id} className="rounded-xl border border-primary/15 bg-card/60 p-6 backdrop-blur-sm transition-colors hover:border-primary/40">
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-secondary text-primary">
+                  <Icon name={t.type === 'music' ? 'Music2' : 'Feather'} size={20} />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between gap-4">
+                    <h3 className="font-display text-2xl">{t.title}</h3>
+                    <span className="text-xs uppercase tracking-widest text-muted-foreground">{t.type === 'music' ? 'трек' : 'стих'}</span>
+                  </div>
+                  {t.type === 'poem' && t.text && (
+                    <p className="mt-3 whitespace-pre-line italic leading-relaxed text-muted-foreground">{t.text}</p>
+                  )}
+                  {t.type === 'music' && (
+                    <button className="mt-3 flex items-center gap-2 text-sm text-primary hover:underline">
+                      <Icon name="Play" size={16} /> Воспроизвести
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* CONTACT */}
+      <section id="contact" className="mx-auto max-w-2xl px-6 py-28 text-center">
+        <p className="mb-3 text-sm uppercase tracking-[0.3em] text-primary/80">Контакты</p>
+        <h2 className="font-display text-4xl md:text-5xl">Связаться с автором</h2>
+        <p className="mt-4 text-muted-foreground">Напишите Сергею — о сотрудничестве, концертах или просто о впечатлениях.</p>
+        <div className="mt-10 space-y-4 text-left">
+          <Input placeholder="Ваше имя" className="h-12 border-primary/20 bg-card/60" />
+          <Input placeholder="Email" type="email" className="h-12 border-primary/20 bg-card/60" />
+          <Textarea placeholder="Сообщение" rows={4} className="border-primary/20 bg-card/60" />
+          <Button size="lg" className="w-full rounded-full">Отправить сообщение</Button>
+        </div>
+        <div className="mt-12 flex justify-center gap-6 text-muted-foreground">
+          {['Send', 'Instagram', 'Youtube', 'Mail'].map((ic) => (
+            <button key={ic} className="transition-colors hover:text-primary"><Icon name={ic} size={22} /></button>
+          ))}
+        </div>
+      </section>
+
+      <footer className="border-t border-primary/10 py-8 text-center text-sm text-muted-foreground">
+        © {new Date().getFullYear()} Сергей Ялин. Стихи и музыка.
+      </footer>
+
+      {/* UPLOAD MODAL */}
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-6 backdrop-blur-sm" onClick={() => setOpen(false)}>
+          <div className="animate-float-up w-full max-w-md rounded-2xl border border-primary/30 bg-card p-8" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-display text-3xl">Новое произведение</h3>
+            <div className="mt-6 space-y-4">
+              <Input placeholder="Название" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="border-primary/20 bg-background" />
+              <div className="flex gap-3">
+                {(['poem', 'music'] as const).map((tp) => (
+                  <button
+                    key={tp}
+                    onClick={() => setForm({ ...form, type: tp })}
+                    className={`flex-1 rounded-lg border py-2 text-sm transition-colors ${form.type === tp ? 'border-primary bg-primary text-primary-foreground' : 'border-primary/20 text-muted-foreground'}`}
+                  >
+                    {tp === 'poem' ? 'Стих' : 'Трек'}
+                  </button>
+                ))}
+              </div>
+              {form.type === 'poem' ? (
+                <Textarea placeholder="Текст стихотворения" rows={5} value={form.text} onChange={(e) => setForm({ ...form, text: e.target.value })} className="border-primary/20 bg-background" />
+              ) : (
+                <button onClick={() => fileRef.current?.click()} className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-primary/40 py-8 text-muted-foreground hover:text-primary">
+                  <Icon name="Upload" size={20} /> Выбрать аудиофайл
+                </button>
+              )}
+              <input ref={fileRef} type="file" accept="audio/*" className="hidden" />
+              <div className="flex gap-3 pt-2">
+                <Button variant="outline" className="flex-1 border-primary/30 bg-transparent" onClick={() => setOpen(false)}>Отмена</Button>
+                <Button className="flex-1" onClick={addWork}>Добавить</Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
