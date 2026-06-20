@@ -32,7 +32,7 @@ def handler(event: dict, context) -> dict:
     )
     upload_url = s3.generate_presigned_url(
         'put_object',
-        Params={'Bucket': 'files', 'Key': file_key, 'ContentType': content_type},
+        Params={'Bucket': 'files', 'Key': file_key},
         ExpiresIn=300
     )
 

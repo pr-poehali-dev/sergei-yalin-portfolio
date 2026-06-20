@@ -70,11 +70,10 @@ const Index = () => {
       });
       const data = await res.json();
 
-      // Шаг 2: если это трек — грузим файл напрямую в S3
+      // Шаг 2: если это трек — грузим файл напрямую в S3 без лишних заголовков
       if (form.type === 'music' && form.fileObj && data.upload_url) {
         await fetch(data.upload_url, {
           method: 'PUT',
-          headers: { 'Content-Type': data.content_type },
           body: form.fileObj,
         });
       }
