@@ -27,7 +27,52 @@ const nav = [
 ];
 
 const GET_TRACKS_URL = 'https://functions.poehali.dev/2bc5f2f3-4a26-4ed3-89d2-76c4ea5b3df0';
-const GET_UPLOAD_URL = 'https://functions.poehali.dev/348e1c75-0fff-4df4-b020-ac71ecc5d8b9';
+const UPLOAD_CHUNK_URL = 'https://functions.poehali.dev/7e4157c5-edf3-4ca4-a0dd-965a1286a5a0';
+const CHUNK_SIZE = 500 * 1024; // 500KB
+
+async function toBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve((reader.result as string).split(',')[1]);
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function uploadMusicFile(file: File, title: string, text: string): Promise<{ id: number; title: string; type: string; text: string; url: string }> {
+  const ext = file.name.rsplit ? file.name.split('.').pop() : file.name.split('.').pop() || 'mp3';
+  const file_key = `tracks/${crypto.randomUUID()}.${ext}`;
+
+  // init
+  const initRes = await fetch(UPLOAD_CHUNK_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'init', file_key }),
+  });
+  const { upload_id } = await initRes.json();
+
+  // chunks
+  const parts: { PartNumber: number; ETag: string }[] = [];
+  const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+  for (let i = 0; i < totalChunks; i++) {
+    const blob = file.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+    const chunk = await toBase64(blob);
+    const chunkRes = await fetch(UPLOAD_CHUNK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'chunk', file_key, upload_id, part_number: i + 1, chunk }),
+    });
+    const { etag } = await chunkRes.json();
+    parts.push({ PartNumber: i + 1, ETag: etag });
+  }
+
+  // complete
+  const completeRes = await fetch(UPLOAD_CHUNK_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'complete', file_key, upload_id, parts, title, type: 'music', text }),
+  });
+  return completeRes.json();
+}
 
 const BIO_PLACEHOLDER = 'Напишите здесь свою биографию и историю творчества...';
 
@@ -62,24 +107,18 @@ const Index = () => {
     setUploading(true);
 
     try {
-      // Шаг 1: создаём запись в БД и получаем presigned URL для загрузки файла
-      const res = await fetch(GET_UPLOAD_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: form.title, type: form.type, text: form.text, fileName: form.fileName }),
-      });
-      const data = await res.json();
-
-      // Шаг 2: грузим файл напрямую в S3 через presigned URL (no-cors обходит CORS preflight)
-      if (form.type === 'music' && form.fileObj && data.upload_url) {
-        await fetch(data.upload_url, {
-          method: 'PUT',
-          mode: 'no-cors',
-          body: form.fileObj,
+      let data;
+      if (form.type === 'music' && form.fileObj) {
+        data = await uploadMusicFile(form.fileObj, form.title, form.text);
+      } else {
+        const res = await fetch(UPLOAD_CHUNK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'complete', file_key: '', upload_id: '', parts: [], title: form.title, type: 'poem', text: form.text }),
         });
+        data = await res.json();
       }
-
-      setTracks((prev) => [{ id: data.id, title: data.title, type: data.type, text: data.text, url: data.cdn_url }, ...prev]);
+      setTracks((prev) => [{ id: data.id, title: data.title, type: data.type, text: data.text, url: data.url }, ...prev]);
       setForm({ title: '', type: 'poem', text: '', fileName: '', fileObj: null });
       setOpen(false);
     } finally {
