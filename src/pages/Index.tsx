@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 
-const PORTRAIT = 'https://cdn.poehali.dev/projects/8df8bdc8-b92a-4058-b356-f15e068f718c/files/04f92814-4f8e-4f77-91e5-fa0a86bc8ee6.jpg';
+const PORTRAIT = 'https://cdn.poehali.dev/projects/8df8bdc8-b92a-4058-b356-f15e068f718c/bucket/0688c4ea-5a52-4d9c-a51b-ccb0a4c91d81.jpg';
 const BG = 'https://cdn.poehali.dev/projects/8df8bdc8-b92a-4058-b356-f15e068f718c/files/38f8a1de-8b3b-45d7-a77d-746a34e1d18d.jpg';
 
 interface Track {
@@ -16,9 +16,7 @@ interface Track {
 }
 
 const initialTracks: Track[] = [
-  { id: 1, title: 'Туман над рекой', type: 'music', url: '' },
   { id: 2, title: 'Молчание звёзд', type: 'poem', text: 'Когда молчат вечерние огни,\nи город тонет в сумрачной дали —\nя слышу, как поют твои шаги\nв беззвучной музыке земли.' },
-  { id: 3, title: 'Северный ветер', type: 'music', url: '' },
 ];
 
 const nav = [
@@ -31,15 +29,22 @@ const nav = [
 const Index = () => {
   const [tracks, setTracks] = useState<Track[]>(initialTracks);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<{ title: string; type: 'music' | 'poem'; text: string }>({ title: '', type: 'poem', text: '' });
+  const [form, setForm] = useState<{ title: string; type: 'music' | 'poem'; text: string; fileName: string; url: string }>({ title: '', type: 'poem', text: '', fileName: '', url: '' });
   const fileRef = useRef<HTMLInputElement>(null);
 
   const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
 
+  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setForm((f) => ({ ...f, fileName: file.name, url: URL.createObjectURL(file), title: f.title || file.name.replace(/\.[^.]+$/, '') }));
+  };
+
   const addWork = () => {
     if (!form.title.trim()) return;
-    setTracks([{ id: Date.now(), title: form.title, type: form.type, text: form.type === 'poem' ? form.text : undefined }, ...tracks]);
-    setForm({ title: '', type: 'poem', text: '' });
+    if (form.type === 'music' && !form.url) return;
+    setTracks([{ id: Date.now(), title: form.title, type: form.type, text: form.type === 'poem' ? form.text : undefined, url: form.type === 'music' ? form.url : undefined }, ...tracks]);
+    setForm({ title: '', type: 'poem', text: '', fileName: '', url: '' });
     setOpen(false);
   };
 
@@ -98,10 +103,8 @@ const Index = () => {
           <div>
             <p className="mb-3 text-sm uppercase tracking-[0.3em] text-primary/80">Биография</p>
             <h2 className="font-display text-4xl md:text-5xl">История творчества</h2>
-            <div className="mt-6 space-y-4 leading-relaxed text-muted-foreground">
-              <p>Сергей Ялин начал писать стихи в ранней юности, находя в словах убежище от шумного мира. Со временем строки обрели мелодию — так родилась его музыка.</p>
-              <p>Его творчество — это сплав поэзии и звука, где каждая композиция становится отдельной маленькой вселенной, полной тумана, света и тихой меланхолии.</p>
-              <p>Сегодня Сергей продолжает создавать произведения, в которых слово и музыка существуют как единое целое.</p>
+            <div className="mt-6 leading-relaxed text-muted-foreground/60 italic">
+              <p>Здесь скоро появится биография — Сергей напишет её сам.</p>
             </div>
           </div>
         </div>
@@ -147,10 +150,8 @@ const Index = () => {
                   {t.type === 'poem' && t.text && (
                     <p className="mt-3 whitespace-pre-line italic leading-relaxed text-muted-foreground">{t.text}</p>
                   )}
-                  {t.type === 'music' && (
-                    <button className="mt-3 flex items-center gap-2 text-sm text-primary hover:underline">
-                      <Icon name="Play" size={16} /> Воспроизвести
-                    </button>
+                  {t.type === 'music' && t.url && (
+                    <audio controls src={t.url} className="mt-3 w-full" />
                   )}
                 </div>
               </div>
@@ -202,11 +203,12 @@ const Index = () => {
               {form.type === 'poem' ? (
                 <Textarea placeholder="Текст стихотворения" rows={5} value={form.text} onChange={(e) => setForm({ ...form, text: e.target.value })} className="border-primary/20 bg-background" />
               ) : (
-                <button onClick={() => fileRef.current?.click()} className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-primary/40 py-8 text-muted-foreground hover:text-primary">
-                  <Icon name="Upload" size={20} /> Выбрать аудиофайл
+                <button onClick={() => fileRef.current?.click()} className={`flex w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed py-8 transition-colors ${form.fileName ? 'border-primary/60 text-primary' : 'border-primary/40 text-muted-foreground hover:text-primary'}`}>
+                  <Icon name={form.fileName ? 'CheckCircle2' : 'Upload'} size={22} />
+                  <span className="px-4 text-center text-sm">{form.fileName || 'Выбрать аудиофайл (MP3, WAV)'}</span>
                 </button>
               )}
-              <input ref={fileRef} type="file" accept="audio/*" className="hidden" />
+              <input ref={fileRef} type="file" accept="audio/*" className="hidden" onChange={onFile} />
               <div className="flex gap-3 pt-2">
                 <Button variant="outline" className="flex-1 border-primary/30 bg-transparent" onClick={() => setOpen(false)}>Отмена</Button>
                 <Button className="flex-1" onClick={addWork}>Добавить</Button>
