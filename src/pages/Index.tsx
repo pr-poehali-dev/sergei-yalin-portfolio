@@ -27,25 +27,29 @@ const nav = [
 ];
 
 const GET_TRACKS_URL = 'https://functions.poehali.dev/2bc5f2f3-4a26-4ed3-89d2-76c4ea5b3df0';
-const UPLOAD_URL = 'https://functions.poehali.dev/7e4157c5-edf3-4ca4-a0dd-965a1286a5a0';
+const GET_UPLOAD_URL = 'https://functions.poehali.dev/348e1c75-0fff-4df4-b020-ac71ecc5d8b9';
+const SAVE_TRACK_URL = 'https://functions.poehali.dev/7e4157c5-edf3-4ca4-a0dd-965a1286a5a0';
 
 async function uploadMusicFile(file: File, title: string, text: string): Promise<{ id: number; title: string; type: string; text: string; url: string }> {
-  const ext = file.name.split('.').pop() || 'mp3';
-  const file_key = `tracks/${crypto.randomUUID()}.${ext}`;
-
-  const fileB64 = await new Promise<string>((resolve) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve((reader.result as string).split(',')[1]);
-    reader.readAsDataURL(file);
-  });
-
-  const res = await fetch(UPLOAD_URL, {
+  // Шаг 1: получаем presigned URL и создаём запись в БД
+  const metaRes = await fetch(GET_UPLOAD_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'upload', file_key, file: fileB64, title, text }),
+    body: JSON.stringify({ title, type: 'music', text, fileName: file.name }),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  if (!metaRes.ok) throw new Error(`Ошибка сервера: ${metaRes.status}`);
+  const meta = await metaRes.json();
+  if (!meta.upload_url) throw new Error('Не получен URL для загрузки');
+
+  // Шаг 2: загружаем файл напрямую в S3 через presigned URL
+  const putRes = await fetch(meta.upload_url, {
+    method: 'PUT',
+    headers: { 'Content-Type': meta.content_type || 'audio/mpeg' },
+    body: file,
+  });
+  if (!putRes.ok) throw new Error(`Ошибка загрузки файла: ${putRes.status}`);
+
+  return { id: meta.id, title: meta.title, type: meta.type, text: meta.text, url: meta.cdn_url };
 }
 
 const BIO_PLACEHOLDER = 'Напишите здесь свою биографию и историю творчества...';
@@ -85,7 +89,7 @@ const Index = () => {
       if (form.type === 'music' && form.fileObj) {
         data = await uploadMusicFile(form.fileObj, form.title, form.text);
       } else {
-        const res = await fetch(UPLOAD_URL, {
+        const res = await fetch(SAVE_TRACK_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'save_poem', title: form.title, text: form.text }),
