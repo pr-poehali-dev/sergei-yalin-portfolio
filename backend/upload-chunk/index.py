@@ -4,9 +4,12 @@ import base64
 import boto3
 import psycopg2
 
+HEADERS = {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'}
+
 def handler(event: dict, context) -> dict:
-    """Загружает аудиофайл (base64) в S3 через put_object и сохраняет трек в БД.
-    action=upload: загружает файл целиком и сохраняет запись
+    """Загрузка аудио чанками в /tmp, затем put_object в S3.
+    action=chunk: принимает чанк base64, сохраняет в /tmp/{upload_id}.part
+    action=finish: собирает файл из /tmp, загружает в S3, сохраняет в БД
     action=save_poem: сохраняет стихотворение без файла
     """
     if event.get('httpMethod') == 'OPTIONS':
@@ -20,15 +23,27 @@ def handler(event: dict, context) -> dict:
     action = body.get('action')
     schema = os.environ['MAIN_DB_SCHEMA']
 
-    if action == 'upload':
+    if action == 'chunk':
+        upload_id = body.get('upload_id', '')
+        chunk_b64 = body.get('chunk', '')
+        chunk_bytes = base64.b64decode(chunk_b64)
+        tmp_path = f'/tmp/{upload_id}.part'
+        with open(tmp_path, 'ab') as f:
+            f.write(chunk_bytes)
+        return {'statusCode': 200, 'headers': HEADERS, 'body': json.dumps({'ok': True})}
+
+    elif action == 'finish':
+        upload_id = body.get('upload_id', '')
         file_key = body.get('file_key', '')
-        file_b64 = body.get('file', '')
         title = body.get('title', '')
         text = body.get('text', '')
-
-        file_bytes = base64.b64decode(file_b64)
         ext = file_key.rsplit('.', 1)[-1].lower() if '.' in file_key else 'mp3'
         content_type = 'audio/mpeg' if ext == 'mp3' else f'audio/{ext}'
+
+        tmp_path = f'/tmp/{upload_id}.part'
+        with open(tmp_path, 'rb') as f:
+            file_bytes = f.read()
+        os.remove(tmp_path)
 
         s3 = boto3.client(
             's3',
@@ -50,11 +65,8 @@ def handler(event: dict, context) -> dict:
         cur.close()
         conn.close()
 
-        return {
-            'statusCode': 200,
-            'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
-            'body': json.dumps({'id': new_id, 'title': title, 'type': 'music', 'text': text, 'url': cdn_url})
-        }
+        return {'statusCode': 200, 'headers': HEADERS,
+                'body': json.dumps({'id': new_id, 'title': title, 'type': 'music', 'text': text, 'url': cdn_url})}
 
     elif action == 'save_poem':
         title = body.get('title', '')
