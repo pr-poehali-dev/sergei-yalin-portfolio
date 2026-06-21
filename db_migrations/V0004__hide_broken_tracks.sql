@@ -1,0 +1,1 @@
+UPDATE t_p81888968_sergei_yalin_portfol.tracks SET hidden = TRUE WHERE id IN (5, 11, 15);
