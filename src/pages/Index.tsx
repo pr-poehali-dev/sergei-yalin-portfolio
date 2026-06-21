@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Icon from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -88,10 +89,11 @@ const Index = () => {
   const [blogOpen, setBlogOpen] = useState(false);
   const [blogForm, setBlogForm] = useState({ title: '', content: '' });
   const [blogSaving, setBlogSaving] = useState(false);
-  const [expandedPost, setExpandedPost] = useState<number | null>(null);
+
   const [blogImage, setBlogImage] = useState<{ b64: string; mime: string; preview: string } | null>(null);
   const blogImageRef = useRef<HTMLInputElement>(null);
 
+  const navigate = useNavigate();
   const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
 
   useEffect(() => {
@@ -354,11 +356,14 @@ const Index = () => {
         ) : (
           <div className="space-y-6">
             {posts.map((post) => {
-              const isExpanded = expandedPost === post.id;
               const preview = post.content.slice(0, 200);
               const hasMore = post.content.length > 200;
               return (
-                <article key={post.id} className="group overflow-hidden rounded-2xl border border-primary/10 bg-card/60 transition-colors hover:border-primary/30">
+                <article
+                  key={post.id}
+                  className="group overflow-hidden rounded-2xl border border-primary/10 bg-card/60 transition-colors hover:border-primary/30 cursor-pointer"
+                  onClick={() => navigate(`/blog/${post.id}`)}
+                >
                   {post.image_url && (
                     <img src={post.image_url} alt={post.title} className="h-56 w-full object-cover" />
                   )}
@@ -369,20 +374,17 @@ const Index = () => {
                           {new Date(post.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
                         </p>
                         <h3 className="font-display text-2xl">{post.title}</h3>
-                        <p className="mt-3 whitespace-pre-wrap leading-relaxed text-muted-foreground">
-                          {isExpanded ? post.content : preview}{hasMore && !isExpanded ? '...' : ''}
+                        <p className="mt-3 leading-relaxed text-muted-foreground line-clamp-3">
+                          {preview}{hasMore ? '...' : ''}
                         </p>
                         {hasMore && (
-                          <button
-                            onClick={() => setExpandedPost(isExpanded ? null : post.id)}
-                            className="mt-3 text-sm text-primary/80 hover:text-primary"
-                          >
-                            {isExpanded ? 'Свернуть' : 'Читать далее'}
-                          </button>
+                          <span className="mt-3 inline-flex items-center gap-1 text-sm text-primary/80 group-hover:text-primary transition-colors">
+                            Читать далее <Icon name="ArrowRight" size={14} />
+                          </span>
                         )}
                       </div>
                       <button
-                        onClick={() => deletePost(post.id)}
+                        onClick={(e) => { e.stopPropagation(); deletePost(post.id); }}
                         className="mt-1 opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground hover:text-destructive"
                       >
                         <Icon name="Trash2" size={16} />
