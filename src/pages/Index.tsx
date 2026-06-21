@@ -60,6 +60,7 @@ async function uploadMusicFile(file: File, title: string, text: string): Promise
   return finishRes.json();
 }
 
+const SEND_MESSAGE_URL = 'https://functions.poehali.dev/84851de2-96aa-4b58-9369-a0c311f7fcc0';
 const BIO_PLACEHOLDER = 'Напишите здесь свою биографию и историю творчества...';
 
 const Index = () => {
@@ -67,6 +68,9 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [open, setOpen] = useState(false);
+  const [contactForm, setContactForm] = useState({ name: '', email: '', message: '' });
+  const [contactSending, setContactSending] = useState(false);
+  const [contactSent, setContactSent] = useState(false);
   const [form, setForm] = useState<{ title: string; type: 'music' | 'poem'; text: string; fileName: string; fileObj: File | null }>({ title: '', type: 'poem', text: '', fileName: '', fileObj: null });
   const fileRef = useRef<HTMLInputElement>(null);
   const [bio, setBio] = useState('');
@@ -271,12 +275,61 @@ const Index = () => {
         <p className="mb-3 text-sm uppercase tracking-[0.3em] text-primary/80">Контакты</p>
         <h2 className="font-display text-4xl md:text-5xl">Связаться с автором</h2>
         <p className="mt-4 text-muted-foreground">Напишите Сергею — о сотрудничестве, концертах или просто о впечатлениях.</p>
-        <div className="mt-10 space-y-4 text-left">
-          <Input placeholder="Ваше имя" className="h-12 border-primary/20 bg-card/60" />
-          <Input placeholder="Email" type="email" className="h-12 border-primary/20 bg-card/60" />
-          <Textarea placeholder="Сообщение" rows={4} className="border-primary/20 bg-card/60" />
-          <Button size="lg" className="w-full rounded-full">Отправить сообщение</Button>
-        </div>
+        {contactSent ? (
+          <div className="mt-10 rounded-xl border border-primary/30 bg-card/60 p-8 text-center">
+            <Icon name="CheckCircle2" size={40} className="mx-auto mb-4 text-primary" />
+            <p className="font-display text-2xl">Сообщение отправлено!</p>
+            <p className="mt-2 text-muted-foreground">Сергей обязательно ответит вам.</p>
+            <Button variant="outline" className="mt-6 border-primary/30 bg-transparent" onClick={() => { setContactSent(false); setContactForm({ name: '', email: '', message: '' }); }}>
+              Отправить ещё
+            </Button>
+          </div>
+        ) : (
+          <div className="mt-10 space-y-4 text-left">
+            <Input
+              placeholder="Ваше имя"
+              className="h-12 border-primary/20 bg-card/60"
+              value={contactForm.name}
+              onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
+            />
+            <Input
+              placeholder="Email"
+              type="email"
+              className="h-12 border-primary/20 bg-card/60"
+              value={contactForm.email}
+              onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
+            />
+            <Textarea
+              placeholder="Сообщение"
+              rows={4}
+              className="border-primary/20 bg-card/60"
+              value={contactForm.message}
+              onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
+            />
+            <Button
+              size="lg"
+              className="w-full rounded-full"
+              disabled={contactSending}
+              onClick={async () => {
+                if (!contactForm.name || !contactForm.email || !contactForm.message) return;
+                setContactSending(true);
+                try {
+                  const res = await fetch(SEND_MESSAGE_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(contactForm),
+                  });
+                  if (res.ok) setContactSent(true);
+                  else alert('Ошибка отправки, попробуйте позже');
+                } finally {
+                  setContactSending(false);
+                }
+              }}
+            >
+              {contactSending ? <><Icon name="Loader2" size={18} className="mr-2 animate-spin" />Отправляю...</> : 'Отправить сообщение'}
+            </Button>
+          </div>
+        )}
         <div className="mt-12 flex justify-center gap-6 text-muted-foreground">
           {['Send', 'Instagram', 'Youtube', 'Mail'].map((ic) => (
             <button key={ic} className="transition-colors hover:text-primary"><Icon name={ic} size={22} /></button>

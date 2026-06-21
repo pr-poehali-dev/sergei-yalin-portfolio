@@ -1,0 +1,12 @@
+{
+  "tests": [
+    {
+      "name": "Пустые поля возвращают 400",
+      "method": "POST",
+      "path": "/",
+      "body": {"name": "", "email": "", "message": ""},
+      "expectedStatus": 400,
+      "bodyMatcher": "partial"
+    }
+  ]
+}
