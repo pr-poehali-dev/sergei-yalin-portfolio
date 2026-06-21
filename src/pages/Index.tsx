@@ -15,6 +15,13 @@ interface Track {
   url?: string;
 }
 
+interface BlogPost {
+  id: number;
+  title: string;
+  content: string;
+  created_at: string;
+}
+
 const initialTracks: Track[] = [
   { id: 2, title: 'Молчание звёзд', type: 'poem', text: 'Когда молчат вечерние огни,\nи город тонет в сумрачной дали —\nя слышу, как поют твои шаги\nв беззвучной музыке земли.' },
 ];
@@ -23,6 +30,7 @@ const nav = [
   { id: 'about', label: 'Биография' },
   { id: 'gallery', label: 'Галерея' },
   { id: 'works', label: 'Творчество' },
+  { id: 'blog', label: 'Блог' },
   { id: 'contact', label: 'Контакты' },
 ];
 
@@ -75,6 +83,11 @@ const Index = () => {
   const fileRef = useRef<HTMLInputElement>(null);
   const [bio, setBio] = useState('');
   const [bioEditing, setBioEditing] = useState(false);
+  const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [blogOpen, setBlogOpen] = useState(false);
+  const [blogForm, setBlogForm] = useState({ title: '', content: '' });
+  const [blogSaving, setBlogSaving] = useState(false);
+  const [expandedPost, setExpandedPost] = useState<number | null>(null);
 
   const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
 
@@ -83,7 +96,38 @@ const Index = () => {
       .then((r) => r.json())
       .then((data) => setTracks(data.tracks || []))
       .finally(() => setLoading(false));
+
+    fetch(`${GET_TRACKS_URL}?resource=blog`)
+      .then((r) => r.json())
+      .then((data) => setPosts(data.posts || []));
   }, []);
+
+  const savePost = async () => {
+    if (!blogForm.title.trim() || !blogForm.content.trim()) return;
+    setBlogSaving(true);
+    const res = await fetch(`${GET_TRACKS_URL}?resource=blog`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(blogForm),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      const newPost: BlogPost = { id: data.id, title: blogForm.title, content: blogForm.content, created_at: data.created_at };
+      setPosts((p) => [newPost, ...p]);
+      setBlogForm({ title: '', content: '' });
+      setBlogOpen(false);
+    }
+    setBlogSaving(false);
+  };
+
+  const deletePost = async (id: number) => {
+    await fetch(`${GET_TRACKS_URL}?resource=blog`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete', id }),
+    });
+    setPosts((p) => p.filter((post) => post.id !== id));
+  };
 
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -268,6 +312,92 @@ const Index = () => {
             </div>
           ))}
         </div>
+      </section>
+
+      {/* BLOG */}
+      <section id="blog" className="mx-auto max-w-4xl px-6 py-28">
+        <div className="mb-12 flex items-end justify-between">
+          <div>
+            <p className="mb-3 text-sm uppercase tracking-[0.3em] text-primary/80">Блог</p>
+            <h2 className="font-display text-4xl md:text-5xl">Чем хочу поделиться<br />с читателями</h2>
+          </div>
+          <Button onClick={() => setBlogOpen(true)} className="rounded-full" size="sm">
+            <Icon name="Plus" size={16} className="mr-2" /> Новая запись
+          </Button>
+        </div>
+
+        {posts.length === 0 ? (
+          <div className="rounded-2xl border border-primary/10 bg-card/40 py-16 text-center text-muted-foreground">
+            <Icon name="BookOpen" size={40} className="mx-auto mb-4 opacity-30" />
+            <p>Пока нет записей. Напишите первую!</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {posts.map((post) => {
+              const isExpanded = expandedPost === post.id;
+              const preview = post.content.slice(0, 200);
+              const hasMore = post.content.length > 200;
+              return (
+                <article key={post.id} className="group rounded-2xl border border-primary/10 bg-card/60 p-7 transition-colors hover:border-primary/30">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <p className="mb-2 text-xs text-muted-foreground">
+                        {new Date(post.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </p>
+                      <h3 className="font-display text-2xl">{post.title}</h3>
+                      <p className="mt-3 whitespace-pre-wrap leading-relaxed text-muted-foreground">
+                        {isExpanded ? post.content : preview}{hasMore && !isExpanded ? '...' : ''}
+                      </p>
+                      {hasMore && (
+                        <button
+                          onClick={() => setExpandedPost(isExpanded ? null : post.id)}
+                          className="mt-3 text-sm text-primary/80 hover:text-primary"
+                        >
+                          {isExpanded ? 'Свернуть' : 'Читать далее'}
+                        </button>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => deletePost(post.id)}
+                      className="mt-1 opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+                    >
+                      <Icon name="Trash2" size={16} />
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+
+        {blogOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-6 backdrop-blur-sm" onClick={() => setBlogOpen(false)}>
+            <div className="w-full max-w-lg rounded-2xl border border-primary/30 bg-card p-8" onClick={(e) => e.stopPropagation()}>
+              <h3 className="font-display text-3xl mb-6">Новая запись</h3>
+              <div className="space-y-4">
+                <Input
+                  placeholder="Заголовок"
+                  value={blogForm.title}
+                  onChange={(e) => setBlogForm({ ...blogForm, title: e.target.value })}
+                  className="border-primary/20 bg-background"
+                />
+                <Textarea
+                  placeholder="Текст записи..."
+                  rows={8}
+                  value={blogForm.content}
+                  onChange={(e) => setBlogForm({ ...blogForm, content: e.target.value })}
+                  className="border-primary/20 bg-background"
+                />
+                <div className="flex gap-3 pt-2">
+                  <Button variant="outline" className="flex-1 border-primary/30 bg-transparent" onClick={() => setBlogOpen(false)}>Отмена</Button>
+                  <Button className="flex-1" onClick={savePost} disabled={blogSaving}>
+                    {blogSaving ? <><Icon name="Loader2" size={16} className="mr-2 animate-spin" />Сохраняю...</> : 'Опубликовать'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* CONTACT */}

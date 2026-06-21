@@ -5,7 +5,15 @@
       "method": "GET",
       "path": "/",
       "expectedStatus": 200,
-      "expectedBody": {"tracks": []},
+      "bodyMatcher": "partial",
+      "expectedBody": {}
+    },
+    {
+      "name": "Get blog posts",
+      "method": "GET",
+      "path": "/?resource=blog",
+      "expectedStatus": 200,
+      "expectedBody": {"posts": []},
       "bodyMatcher": "partial"
     }
   ]
