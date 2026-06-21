@@ -1,9 +1,12 @@
 import os
 import json
+import base64
+import uuid
+import boto3
 import psycopg2
 
 def handler(event: dict, context) -> dict:
-    """Возвращает треки/стихи и управляет постами блога."""
+    """Возвращает треки/стихи и управляет постами блога (с фото)."""
     if event.get('httpMethod') == 'OPTIONS':
         return {'statusCode': 200, 'headers': {
             'Access-Control-Allow-Origin': '*',
@@ -21,9 +24,9 @@ def handler(event: dict, context) -> dict:
     # --- БЛОГ ---
     if resource == 'blog':
         if method == 'GET':
-            cur.execute(f'SELECT id, title, content, created_at FROM {schema}.blog_posts ORDER BY created_at DESC')
+            cur.execute(f'SELECT id, title, content, image_url, created_at FROM {schema}.blog_posts ORDER BY created_at DESC')
             rows = cur.fetchall()
-            posts = [{'id': r[0], 'title': r[1], 'content': r[2], 'created_at': r[3].isoformat()} for r in rows]
+            posts = [{'id': r[0], 'title': r[1], 'content': r[2], 'image_url': r[3], 'created_at': r[4].isoformat()} for r in rows]
             cur.close()
             conn.close()
             return {'statusCode': 200, 'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
@@ -45,13 +48,32 @@ def handler(event: dict, context) -> dict:
             if not title or not content:
                 return {'statusCode': 400, 'headers': {'Access-Control-Allow-Origin': '*'},
                         'body': json.dumps({'error': 'Заполните заголовок и текст'})}
-            cur.execute(f'INSERT INTO {schema}.blog_posts (title, content) VALUES (%s, %s) RETURNING id, created_at', (title, content))
+
+            image_url = None
+            image_b64 = body.get('image_b64', '')
+            image_mime = body.get('image_mime', 'image/jpeg')
+            if image_b64:
+                s3 = boto3.client(
+                    's3',
+                    endpoint_url='https://bucket.poehali.dev',
+                    aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
+                    aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
+                )
+                ext = image_mime.split('/')[-1].replace('jpeg', 'jpg')
+                key = f'blog/{uuid.uuid4()}.{ext}'
+                s3.put_object(Bucket='files', Key=key, Body=base64.b64decode(image_b64), ContentType=image_mime)
+                image_url = f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{key}"
+
+            cur.execute(
+                f'INSERT INTO {schema}.blog_posts (title, content, image_url) VALUES (%s, %s, %s) RETURNING id, created_at',
+                (title, content, image_url)
+            )
             row = cur.fetchone()
             conn.commit()
             cur.close()
             conn.close()
             return {'statusCode': 200, 'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
-                    'body': json.dumps({'ok': True, 'id': row[0], 'created_at': row[1].isoformat()})}
+                    'body': json.dumps({'ok': True, 'id': row[0], 'created_at': row[1].isoformat(), 'image_url': image_url})}
 
     # --- ТРЕКИ (по умолчанию) ---
     cur.execute(f'SELECT id, title, type, text, cdn_url FROM {schema}.tracks WHERE hidden IS NOT TRUE ORDER BY created_at DESC')

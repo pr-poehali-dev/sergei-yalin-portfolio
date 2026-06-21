@@ -19,6 +19,7 @@ interface BlogPost {
   id: number;
   title: string;
   content: string;
+  image_url?: string;
   created_at: string;
 }
 
@@ -88,6 +89,8 @@ const Index = () => {
   const [blogForm, setBlogForm] = useState({ title: '', content: '' });
   const [blogSaving, setBlogSaving] = useState(false);
   const [expandedPost, setExpandedPost] = useState<number | null>(null);
+  const [blogImage, setBlogImage] = useState<{ b64: string; mime: string; preview: string } | null>(null);
+  const blogImageRef = useRef<HTMLInputElement>(null);
 
   const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
 
@@ -108,16 +111,33 @@ const Index = () => {
     const res = await fetch(`${GET_TRACKS_URL}?resource=blog`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(blogForm),
+      body: JSON.stringify({
+        ...blogForm,
+        image_b64: blogImage?.b64 || '',
+        image_mime: blogImage?.mime || 'image/jpeg',
+      }),
     });
     const data = await res.json();
     if (data.ok) {
-      const newPost: BlogPost = { id: data.id, title: blogForm.title, content: blogForm.content, created_at: data.created_at };
+      const newPost: BlogPost = { id: data.id, title: blogForm.title, content: blogForm.content, image_url: data.image_url, created_at: data.created_at };
       setPosts((p) => [newPost, ...p]);
       setBlogForm({ title: '', content: '' });
+      setBlogImage(null);
       setBlogOpen(false);
     }
     setBlogSaving(false);
+  };
+
+  const onBlogImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      const b64 = result.split(',')[1];
+      setBlogImage({ b64, mime: file.type, preview: result });
+    };
+    reader.readAsDataURL(file);
   };
 
   const deletePost = async (id: number) => {
@@ -338,31 +358,36 @@ const Index = () => {
               const preview = post.content.slice(0, 200);
               const hasMore = post.content.length > 200;
               return (
-                <article key={post.id} className="group rounded-2xl border border-primary/10 bg-card/60 p-7 transition-colors hover:border-primary/30">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <p className="mb-2 text-xs text-muted-foreground">
-                        {new Date(post.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
-                      </p>
-                      <h3 className="font-display text-2xl">{post.title}</h3>
-                      <p className="mt-3 whitespace-pre-wrap leading-relaxed text-muted-foreground">
-                        {isExpanded ? post.content : preview}{hasMore && !isExpanded ? '...' : ''}
-                      </p>
-                      {hasMore && (
-                        <button
-                          onClick={() => setExpandedPost(isExpanded ? null : post.id)}
-                          className="mt-3 text-sm text-primary/80 hover:text-primary"
-                        >
-                          {isExpanded ? 'Свернуть' : 'Читать далее'}
-                        </button>
-                      )}
+                <article key={post.id} className="group overflow-hidden rounded-2xl border border-primary/10 bg-card/60 transition-colors hover:border-primary/30">
+                  {post.image_url && (
+                    <img src={post.image_url} alt={post.title} className="h-56 w-full object-cover" />
+                  )}
+                  <div className="p-7">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <p className="mb-2 text-xs text-muted-foreground">
+                          {new Date(post.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        </p>
+                        <h3 className="font-display text-2xl">{post.title}</h3>
+                        <p className="mt-3 whitespace-pre-wrap leading-relaxed text-muted-foreground">
+                          {isExpanded ? post.content : preview}{hasMore && !isExpanded ? '...' : ''}
+                        </p>
+                        {hasMore && (
+                          <button
+                            onClick={() => setExpandedPost(isExpanded ? null : post.id)}
+                            className="mt-3 text-sm text-primary/80 hover:text-primary"
+                          >
+                            {isExpanded ? 'Свернуть' : 'Читать далее'}
+                          </button>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => deletePost(post.id)}
+                        className="mt-1 opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+                      >
+                        <Icon name="Trash2" size={16} />
+                      </button>
                     </div>
-                    <button
-                      onClick={() => deletePost(post.id)}
-                      className="mt-1 opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground hover:text-destructive"
-                    >
-                      <Icon name="Trash2" size={16} />
-                    </button>
                   </div>
                 </article>
               );
@@ -371,7 +396,7 @@ const Index = () => {
         )}
 
         {blogOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-6 backdrop-blur-sm" onClick={() => setBlogOpen(false)}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-6 backdrop-blur-sm" onClick={() => { setBlogOpen(false); setBlogImage(null); }}>
             <div className="w-full max-w-lg rounded-2xl border border-primary/30 bg-card p-8" onClick={(e) => e.stopPropagation()}>
               <h3 className="font-display text-3xl mb-6">Новая запись</h3>
               <div className="space-y-4">
@@ -383,13 +408,33 @@ const Index = () => {
                 />
                 <Textarea
                   placeholder="Текст записи..."
-                  rows={8}
+                  rows={6}
                   value={blogForm.content}
                   onChange={(e) => setBlogForm({ ...blogForm, content: e.target.value })}
                   className="border-primary/20 bg-background"
                 />
+                <input ref={blogImageRef} type="file" accept="image/*" className="hidden" onChange={onBlogImage} />
+                {blogImage ? (
+                  <div className="relative overflow-hidden rounded-xl">
+                    <img src={blogImage.preview} alt="preview" className="h-40 w-full object-cover" />
+                    <button
+                      onClick={() => setBlogImage(null)}
+                      className="absolute right-2 top-2 rounded-full bg-background/80 p-1 text-muted-foreground hover:text-destructive"
+                    >
+                      <Icon name="X" size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => blogImageRef.current?.click()}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-primary/30 py-4 text-sm text-muted-foreground hover:border-primary/60 hover:text-primary transition-colors"
+                  >
+                    <Icon name="Image" size={18} />
+                    Прикрепить фото (необязательно)
+                  </button>
+                )}
                 <div className="flex gap-3 pt-2">
-                  <Button variant="outline" className="flex-1 border-primary/30 bg-transparent" onClick={() => setBlogOpen(false)}>Отмена</Button>
+                  <Button variant="outline" className="flex-1 border-primary/30 bg-transparent" onClick={() => { setBlogOpen(false); setBlogImage(null); }}>Отмена</Button>
                   <Button className="flex-1" onClick={savePost} disabled={blogSaving}>
                     {blogSaving ? <><Icon name="Loader2" size={16} className="mr-2 animate-spin" />Сохраняю...</> : 'Опубликовать'}
                   </Button>

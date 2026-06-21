@@ -1,0 +1,1 @@
+ALTER TABLE t_p81888968_sergei_yalin_portfol.blog_posts ADD COLUMN image_url TEXT;
