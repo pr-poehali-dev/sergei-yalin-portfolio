@@ -40,11 +40,10 @@ def handler(event: dict, context) -> dict:
         }
 
     elif action == 'chunk':
-        file_key = body['file_key']
-        upload_id = body['upload_id']
-        part_number = body['part_number']
-        chunk_b64 = body['chunk']
-        chunk_bytes = base64.b64decode(chunk_b64)
+        file_key = body.get('file_key', '')
+        upload_id = body.get('upload_id', '')
+        part_number = body.get('part_number', 1)
+        chunk_bytes = base64.b64decode(body.get('chunk', ''))
         resp = s3.upload_part(Bucket='files', Key=file_key, UploadId=upload_id, PartNumber=part_number, Body=chunk_bytes)
         return {
             'statusCode': 200,

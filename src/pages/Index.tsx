@@ -48,9 +48,11 @@ async function uploadMusicFile(file: File, title: string, text: string): Promise
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action: 'init', file_key }),
   });
-  const { upload_id } = await initRes.json();
+  const initData = await initRes.json();
+  const upload_id: string = initData.upload_id;
+  if (!upload_id) throw new Error('Не удалось начать загрузку');
 
-  // chunks
+  // chunks — строго последовательно, ждём каждый ответ
   const parts: { PartNumber: number; ETag: string }[] = [];
   const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
   for (let i = 0; i < totalChunks; i++) {
@@ -61,8 +63,9 @@ async function uploadMusicFile(file: File, title: string, text: string): Promise
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'chunk', file_key, upload_id, part_number: i + 1, chunk }),
     });
-    const { etag } = await chunkRes.json();
-    parts.push({ PartNumber: i + 1, ETag: etag });
+    const chunkData = await chunkRes.json();
+    if (!chunkData.etag) throw new Error(`Ошибка загрузки части ${i + 1}`);
+    parts.push({ PartNumber: i + 1, ETag: chunkData.etag });
   }
 
   // complete
@@ -118,9 +121,12 @@ const Index = () => {
         });
         data = await res.json();
       }
+      if (!data?.id) throw new Error('Ошибка сохранения');
       setTracks((prev) => [{ id: data.id, title: data.title, type: data.type, text: data.text, url: data.url }, ...prev]);
       setForm({ title: '', type: 'poem', text: '', fileName: '', fileObj: null });
       setOpen(false);
+    } catch (err) {
+      alert(`Ошибка загрузки: ${err instanceof Error ? err.message : 'попробуйте ещё раз'}`);
     } finally {
       setUploading(false);
     }
