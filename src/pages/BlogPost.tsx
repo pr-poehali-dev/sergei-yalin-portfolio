@@ -25,8 +25,23 @@ const BlogPostPage = () => {
       .then((data) => {
         const found = (data.posts || []).find((p: BlogPost) => p.id === Number(id));
         setPost(found || null);
+        if (found) {
+          document.title = `${found.title} — Сергей Ялин`;
+          const desc = found.content.slice(0, 160).replace(/\n/g, ' ');
+          document.querySelector('meta[name="description"]')?.setAttribute('content', desc);
+          document.querySelector('meta[property="og:title"]')?.setAttribute('content', found.title);
+          document.querySelector('meta[property="og:description"]')?.setAttribute('content', desc);
+          if (found.image_url) {
+            document.querySelector('meta[property="og:image"]')?.setAttribute('content', found.image_url);
+          }
+        }
       })
       .finally(() => setLoading(false));
+
+    return () => {
+      document.title = 'Сергей Ялин — стихи, музыка и блог';
+      document.querySelector('meta[name="description"]')?.setAttribute('content', 'Сергей Ялин — поэт и музыкант. Авторские стихи, песни, биография, галерея, блог и форма обратной связи.');
+    };
   }, [id]);
 
   if (loading) {
