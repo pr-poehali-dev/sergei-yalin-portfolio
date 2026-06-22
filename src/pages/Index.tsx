@@ -170,6 +170,15 @@ const Index = () => {
     reader.readAsDataURL(file);
   };
 
+  const deleteTrack = async (id: number) => {
+    await fetch(GET_TRACKS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
+      body: JSON.stringify({ action: 'delete_track', id }),
+    });
+    setTracks((p) => p.filter((t) => t.id !== id));
+  };
+
   const deletePost = async (id: number) => {
     await fetch(`${GET_TRACKS_URL}?resource=blog`, {
       method: 'POST',
@@ -355,7 +364,7 @@ const Index = () => {
             <div className="py-12 text-center text-muted-foreground/60 italic">Пока нет произведений — нажмите «Загрузить», чтобы добавить первое.</div>
           )}
           {tracks.map((t) => (
-            <div key={t.id} className="rounded-xl border border-primary/15 bg-card/60 p-6 backdrop-blur-sm transition-colors hover:border-primary/40">
+            <div key={t.id} className="group rounded-xl border border-primary/15 bg-card/60 p-6 backdrop-blur-sm transition-colors hover:border-primary/40">
               <div className="flex items-start gap-4">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-secondary text-primary">
                   <Icon name={t.type === 'music' ? 'Music2' : 'Feather'} size={20} />
@@ -363,7 +372,17 @@ const Index = () => {
                 <div className="flex-1">
                   <div className="flex items-center justify-between gap-4">
                     <h3 className="font-display text-2xl">{t.title}</h3>
-                    <span className="text-xs uppercase tracking-widest text-muted-foreground">{t.type === 'music' ? 'трек' : 'стих'}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs uppercase tracking-widest text-muted-foreground">{t.type === 'music' ? 'трек' : 'стих'}</span>
+                      {isAdmin && (
+                        <button
+                          onClick={() => deleteTrack(t.id)}
+                          className="opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+                        >
+                          <Icon name="Trash2" size={15} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                   {t.type === 'poem' && t.text && (
                     <p className="mt-3 whitespace-pre-line italic leading-relaxed text-muted-foreground">{t.text}</p>

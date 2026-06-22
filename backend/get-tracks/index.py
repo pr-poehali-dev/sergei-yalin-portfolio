@@ -84,6 +84,17 @@ def handler(event: dict, context) -> dict:
                     'body': json.dumps({'ok': True, 'id': row[0], 'created_at': row[1].isoformat(), 'image_url': image_url})}
 
     # --- ТРЕКИ (по умолчанию) ---
+    if method == 'POST':
+        if not check_auth():
+            cur.close(); conn.close()
+            return {'statusCode': 403, 'headers': {'Access-Control-Allow-Origin': '*'}, 'body': json.dumps({'error': 'Неверный пароль'})}
+        body = json.loads(event.get('body') or '{}')
+        if body.get('action') == 'delete_track':
+            cur.execute(f'DELETE FROM {schema}.tracks WHERE id = %s', (body.get('id'),))
+            conn.commit()
+            cur.close(); conn.close()
+            return {'statusCode': 200, 'headers': {'Access-Control-Allow-Origin': '*'}, 'body': json.dumps({'ok': True})}
+
     cur.execute(f'SELECT id, title, type, text, cdn_url FROM {schema}.tracks WHERE hidden IS NOT TRUE ORDER BY created_at DESC')
     rows = cur.fetchall()
     cur.close()
