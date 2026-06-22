@@ -1,11 +1,11 @@
 {
   "tests": [
     {
-      "name": "Unknown action returns 400",
+      "name": "Reject without token",
       "method": "POST",
       "path": "/",
-      "body": {"action": "unknown"},
-      "expectedStatus": 400,
+      "body": {"action": "chunk"},
+      "expectedStatus": 403,
       "bodyMatcher": "partial"
     }
   ]

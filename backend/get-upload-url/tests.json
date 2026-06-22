@@ -1,12 +1,11 @@
 {
   "tests": [
     {
-      "name": "Get upload URL for poem",
+      "name": "Reject without token",
       "method": "POST",
       "path": "/",
-      "body": {"title": "Тест стих", "type": "poem", "text": "Строка первая"},
-      "expectedStatus": 200,
-      "expectedBody": {"type": "poem"},
+      "body": {"title": "Тест", "type": "poem"},
+      "expectedStatus": 403,
       "bodyMatcher": "partial"
     }
   ]

@@ -11,7 +11,7 @@ def handler(event: dict, context) -> dict:
         return {'statusCode': 200, 'headers': {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Token',
         }, 'body': ''}
 
     conn = psycopg2.connect(os.environ['DATABASE_URL'])
@@ -20,6 +20,11 @@ def handler(event: dict, context) -> dict:
     method = event.get('httpMethod', 'GET')
     params = event.get('queryStringParameters') or {}
     resource = params.get('resource', 'tracks')
+
+    def check_auth():
+        headers = event.get('headers') or {}
+        token = headers.get('X-Admin-Token') or headers.get('x-admin-token', '')
+        return token == os.environ.get('ADMIN_PASSWORD', '')
 
     # --- БЛОГ ---
     if resource == 'blog':
@@ -33,6 +38,9 @@ def handler(event: dict, context) -> dict:
                     'body': json.dumps({'posts': posts})}
 
         if method == 'POST':
+            if not check_auth():
+                cur.close(); conn.close()
+                return {'statusCode': 403, 'headers': {'Access-Control-Allow-Origin': '*'}, 'body': json.dumps({'error': 'Неверный пароль'})}
             body = json.loads(event.get('body') or '{}')
             action = body.get('action', 'create')
 

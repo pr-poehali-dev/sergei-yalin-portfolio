@@ -40,7 +40,7 @@ const GET_TRACKS_URL = 'https://functions.poehali.dev/2bc5f2f3-4a26-4ed3-89d2-76
 const UPLOAD_URL = 'https://functions.poehali.dev/7e4157c5-edf3-4ca4-a0dd-965a1286a5a0';
 const CHUNK_SIZE = 700 * 1024; // 700KB — вмещается в лимит запроса после base64
 
-async function uploadMusicFile(file: File, title: string, text: string): Promise<{ id: number; title: string; type: string; text: string; url: string }> {
+async function uploadMusicFile(file: File, title: string, text: string, token: string): Promise<{ id: number; title: string; type: string; text: string; url: string }> {
   const upload_id = crypto.randomUUID();
   const ext = file.name.split('.').pop() || 'mp3';
   const file_key = `tracks/${upload_id}.${ext}`;
@@ -55,7 +55,7 @@ async function uploadMusicFile(file: File, title: string, text: string): Promise
     });
     const res = await fetch(UPLOAD_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Token': token },
       body: JSON.stringify({ action: 'chunk', upload_id, chunk }),
     });
     if (!res.ok) throw new Error(`Ошибка части ${i + 1}`);
@@ -63,7 +63,7 @@ async function uploadMusicFile(file: File, title: string, text: string): Promise
 
   const finishRes = await fetch(UPLOAD_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-Admin-Token': token },
     body: JSON.stringify({ action: 'finish', upload_id, file_key, title, text }),
   });
   if (!finishRes.ok) throw new Error(`Ошибка завершения загрузки`);
@@ -93,6 +93,12 @@ const Index = () => {
   const [blogImage, setBlogImage] = useState<{ b64: string; mime: string; preview: string } | null>(null);
   const blogImageRef = useRef<HTMLInputElement>(null);
 
+  const [adminToken, setAdminToken] = useState(() => sessionStorage.getItem('admin_token') || '');
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [loginInput, setLoginInput] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const isAdmin = adminToken !== '';
+
   const navigate = useNavigate();
   const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
 
@@ -107,12 +113,34 @@ const Index = () => {
       .then((data) => setPosts(data.posts || []));
   }, []);
 
+  const login = async () => {
+    const res = await fetch(`${GET_TRACKS_URL}?resource=blog`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Token': loginInput },
+      body: JSON.stringify({ action: 'check_auth' }),
+    });
+    if (res.status === 403) {
+      setLoginError('Неверный пароль');
+      return;
+    }
+    sessionStorage.setItem('admin_token', loginInput);
+    setAdminToken(loginInput);
+    setLoginInput('');
+    setLoginError('');
+    setLoginOpen(false);
+  };
+
+  const logout = () => {
+    sessionStorage.removeItem('admin_token');
+    setAdminToken('');
+  };
+
   const savePost = async () => {
     if (!blogForm.title.trim() || !blogForm.content.trim()) return;
     setBlogSaving(true);
     const res = await fetch(`${GET_TRACKS_URL}?resource=blog`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
       body: JSON.stringify({
         ...blogForm,
         image_b64: blogImage?.b64 || '',
@@ -145,7 +173,7 @@ const Index = () => {
   const deletePost = async (id: number) => {
     await fetch(`${GET_TRACKS_URL}?resource=blog`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
       body: JSON.stringify({ action: 'delete', id }),
     });
     setPosts((p) => p.filter((post) => post.id !== id));
@@ -165,11 +193,11 @@ const Index = () => {
     try {
       let data;
       if (form.type === 'music' && form.fileObj) {
-        data = await uploadMusicFile(form.fileObj, form.title, form.text);
+        data = await uploadMusicFile(form.fileObj, form.title, form.text, adminToken);
       } else {
         const res = await fetch(UPLOAD_URL, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
           body: JSON.stringify({ action: 'save_poem', title: form.title, text: form.text }),
         });
         data = await res.json();
@@ -199,12 +227,22 @@ const Index = () => {
           <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="font-display text-2xl tracking-wide text-gradient-gold">
             Сергей Ялин
           </button>
-          <div className="hidden gap-8 md:flex">
+          <div className="hidden gap-8 md:flex items-center">
             {nav.map((n) => (
               <button key={n.id} onClick={() => scrollTo(n.id)} className="text-sm uppercase tracking-widest text-muted-foreground transition-colors hover:text-primary">
                 {n.label}
               </button>
             ))}
+            {isAdmin ? (
+              <button onClick={logout} className="flex items-center gap-1 text-sm text-primary/60 hover:text-primary transition-colors">
+                <Icon name="LogOut" size={15} />
+                Выйти
+              </button>
+            ) : (
+              <button onClick={() => setLoginOpen(true)} className="flex items-center gap-1 text-sm text-muted-foreground/40 hover:text-muted-foreground transition-colors">
+                <Icon name="Lock" size={14} />
+              </button>
+            )}
           </div>
         </nav>
       </header>
@@ -262,17 +300,19 @@ const Index = () => {
                 </div>
               ) : (
                 <div
-                  onClick={() => setBioEditing(true)}
-                  className="group relative cursor-text rounded-xl border border-dashed border-primary/20 p-4 transition-colors hover:border-primary/50"
+                  onClick={() => isAdmin && setBioEditing(true)}
+                  className={`group relative rounded-xl border border-dashed border-primary/20 p-4 transition-colors ${isAdmin ? 'cursor-text hover:border-primary/50' : 'cursor-default'}`}
                 >
                   {bio ? (
                     <p className="whitespace-pre-wrap leading-relaxed text-muted-foreground">{bio}</p>
                   ) : (
-                    <p className="italic text-muted-foreground/50">{BIO_PLACEHOLDER}</p>
+                    <p className="italic text-muted-foreground/50">{isAdmin ? BIO_PLACEHOLDER : 'Биография скоро появится...'}</p>
                   )}
-                  <span className="absolute right-3 top-3 flex items-center gap-1 text-xs text-primary/0 transition-all group-hover:text-primary/70">
-                    <Icon name="Pencil" size={12} /> редактировать
-                  </span>
+                  {isAdmin && (
+                    <span className="absolute right-3 top-3 flex items-center gap-1 text-xs text-primary/0 transition-all group-hover:text-primary/70">
+                      <Icon name="Pencil" size={12} /> редактировать
+                    </span>
+                  )}
                 </div>
               )}
             </div>
@@ -298,9 +338,11 @@ const Index = () => {
             <p className="mb-3 text-sm uppercase tracking-[0.3em] text-primary/80">Творчество</p>
             <h2 className="font-display text-4xl md:text-5xl">Треки и стихи</h2>
           </div>
-          <Button onClick={() => setOpen(true)} variant="outline" className="rounded-full border-primary/40 bg-transparent">
-            <Icon name="Plus" size={18} className="mr-2" /> Загрузить
-          </Button>
+          {isAdmin && (
+            <Button onClick={() => setOpen(true)} variant="outline" className="rounded-full border-primary/40 bg-transparent">
+              <Icon name="Plus" size={18} className="mr-2" /> Загрузить
+            </Button>
+          )}
         </div>
 
         <div className="mt-10 space-y-4">
@@ -343,9 +385,11 @@ const Index = () => {
             <p className="mb-3 text-sm uppercase tracking-[0.3em] text-primary/80">Блог</p>
             <h2 className="font-display text-4xl md:text-5xl">Чем хочу поделиться<br />с читателями</h2>
           </div>
-          <Button onClick={() => setBlogOpen(true)} className="rounded-full" size="sm">
-            <Icon name="Plus" size={16} className="mr-2" /> Новая запись
-          </Button>
+          {isAdmin && (
+            <Button onClick={() => setBlogOpen(true)} className="rounded-full" size="sm">
+              <Icon name="Plus" size={16} className="mr-2" /> Новая запись
+            </Button>
+          )}
         </div>
 
         {posts.length === 0 ? (
@@ -383,12 +427,14 @@ const Index = () => {
                           </span>
                         )}
                       </div>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); deletePost(post.id); }}
-                        className="mt-1 opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground hover:text-destructive"
-                      >
-                        <Icon name="Trash2" size={16} />
-                      </button>
+                      {isAdmin && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); deletePost(post.id); }}
+                          className="mt-1 opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+                        >
+                          <Icon name="Trash2" size={16} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </article>
@@ -550,6 +596,34 @@ const Index = () => {
                 <Button className="flex-1" onClick={addWork} disabled={uploading}>
                   {uploading ? <><Icon name="Loader2" size={16} className="mr-2 animate-spin" />Загружаю...</> : 'Добавить'}
                 </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* LOGIN MODAL */}
+      {loginOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-6 backdrop-blur-sm" onClick={() => { setLoginOpen(false); setLoginError(''); setLoginInput(''); }}>
+          <div className="w-full max-w-sm rounded-2xl border border-primary/30 bg-card p-8" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-6 flex items-center gap-3">
+              <Icon name="Lock" size={20} className="text-primary/60" />
+              <h3 className="font-display text-2xl">Вход для автора</h3>
+            </div>
+            <div className="space-y-4">
+              <Input
+                type="password"
+                placeholder="Пароль"
+                value={loginInput}
+                onChange={(e) => { setLoginInput(e.target.value); setLoginError(''); }}
+                onKeyDown={(e) => e.key === 'Enter' && login()}
+                autoFocus
+                className="border-primary/20 bg-background"
+              />
+              {loginError && <p className="text-sm text-destructive">{loginError}</p>}
+              <div className="flex gap-3 pt-1">
+                <Button variant="outline" className="flex-1 border-primary/30 bg-transparent" onClick={() => { setLoginOpen(false); setLoginError(''); setLoginInput(''); }}>Отмена</Button>
+                <Button className="flex-1" onClick={login}>Войти</Button>
               </div>
             </div>
           </div>

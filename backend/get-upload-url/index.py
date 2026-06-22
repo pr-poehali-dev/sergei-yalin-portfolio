@@ -7,7 +7,12 @@ import psycopg2
 def handler(event: dict, context) -> dict:
     """Создаёт presigned URL для прямой загрузки аудиофайла в S3, сохраняет запись трека в БД."""
     if event.get('httpMethod') == 'OPTIONS':
-        return {'statusCode': 200, 'headers': {'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type'}, 'body': ''}
+        return {'statusCode': 200, 'headers': {'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Token'}, 'body': ''}
+
+    headers = event.get('headers') or {}
+    token = headers.get('X-Admin-Token') or headers.get('x-admin-token', '')
+    if token != os.environ.get('ADMIN_PASSWORD', ''):
+        return {'statusCode': 403, 'headers': {'Access-Control-Allow-Origin': '*'}, 'body': json.dumps({'error': 'Неверный пароль'})}
 
     body = json.loads(event.get('body') or '{}')
     title = body.get('title', '').strip()

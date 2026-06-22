@@ -16,12 +16,17 @@ def handler(event: dict, context) -> dict:
         return {'statusCode': 200, 'headers': {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Token',
         }, 'body': ''}
 
     body = json.loads(event.get('body') or '{}')
     action = body.get('action')
     schema = os.environ['MAIN_DB_SCHEMA']
+
+    headers = event.get('headers') or {}
+    token = headers.get('X-Admin-Token') or headers.get('x-admin-token', '')
+    if token != os.environ.get('ADMIN_PASSWORD', ''):
+        return {'statusCode': 403, 'headers': {'Access-Control-Allow-Origin': '*'}, 'body': json.dumps({'error': 'Неверный пароль'})}
 
     if action == 'chunk':
         upload_id = body.get('upload_id', '')
