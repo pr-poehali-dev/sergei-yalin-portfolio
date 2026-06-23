@@ -26,6 +26,30 @@ def handler(event: dict, context) -> dict:
         token = headers.get('X-Admin-Token') or headers.get('x-admin-token', '')
         return token == os.environ.get('ADMIN_PASSWORD', '')
 
+    # --- БИОГРАФИЯ ---
+    if resource == 'bio':
+        if method == 'GET':
+            cur.execute(f"SELECT value FROM {schema}.site_settings WHERE key = 'bio'")
+            row = cur.fetchone()
+            cur.close(); conn.close()
+            return {'statusCode': 200, 'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
+                    'body': json.dumps({'bio': row[0] if row else ''})}
+
+        if method == 'POST':
+            if not check_auth():
+                cur.close(); conn.close()
+                return {'statusCode': 403, 'headers': {'Access-Control-Allow-Origin': '*'}, 'body': json.dumps({'error': 'Неверный пароль'})}
+            body = json.loads(event.get('body') or '{}')
+            bio_text = body.get('bio', '')
+            cur.execute(
+                f"INSERT INTO {schema}.site_settings (key, value, updated_at) VALUES ('bio', %s, NOW()) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()",
+                (bio_text,)
+            )
+            conn.commit()
+            cur.close(); conn.close()
+            return {'statusCode': 200, 'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
+                    'body': json.dumps({'ok': True})}
+
     # --- БЛОГ ---
     if resource == 'blog':
         if method == 'GET':

@@ -16,5 +16,13 @@
       "expectedBody": {"posts": []},
       "bodyMatcher": "partial"
     }
+  ,{
+      "name": "Get bio",
+      "method": "GET",
+      "path": "/?resource=bio",
+      "expectedStatus": 200,
+      "expectedBody": {"bio": ""},
+      "bodyMatcher": "partial"
+    }
   ]
 }

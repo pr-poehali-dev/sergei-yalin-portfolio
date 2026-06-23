@@ -111,6 +111,10 @@ const Index = () => {
     fetch(`${GET_TRACKS_URL}?resource=blog`)
       .then((r) => r.json())
       .then((data) => setPosts(data.posts || []));
+
+    fetch(`${GET_TRACKS_URL}?resource=bio`)
+      .then((r) => r.json())
+      .then((data) => setBio(data.bio || ''));
   }, []);
 
   const login = async () => {
@@ -314,7 +318,14 @@ const Index = () => {
                     className="border-primary/30 bg-background/60 leading-relaxed text-foreground backdrop-blur-sm"
                   />
                   <div className="flex gap-3">
-                    <Button size="sm" onClick={() => setBioEditing(false)} className="rounded-full px-6">
+                    <Button size="sm" onClick={async () => {
+                      await fetch(`${GET_TRACKS_URL}?resource=bio`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
+                        body: JSON.stringify({ bio }),
+                      });
+                      setBioEditing(false);
+                    }} className="rounded-full px-6">
                       <Icon name="Check" size={15} className="mr-1" /> Сохранить
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => { setBioEditing(false); }} className="rounded-full border-primary/30 bg-transparent px-6">
