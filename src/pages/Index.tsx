@@ -242,16 +242,27 @@ const Index = () => {
                 {n.label}
               </button>
             ))}
-          </div>
-          <div className="flex items-center gap-3">
             {isAdmin ? (
-              <button onClick={logout} className="flex items-center gap-1 text-sm text-primary/60 hover:text-primary transition-colors">
-                <Icon name="LogOut" size={15} />
-                <span className="hidden md:inline">Выйти</span>
+              <button onClick={logout} className="flex items-center gap-1 text-sm text-primary/70 hover:text-primary transition-colors border border-primary/30 rounded-full px-3 py-1">
+                <Icon name="LogOut" size={14} />
+                Выйти
               </button>
             ) : (
-              <button onClick={() => setLoginOpen(true)} className="flex items-center gap-1 text-sm text-muted-foreground/40 hover:text-muted-foreground transition-colors">
-                <Icon name="Lock" size={16} />
+              <button onClick={() => setLoginOpen(true)} className="flex items-center gap-2 text-sm uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors border border-primary/20 hover:border-primary/50 rounded-full px-4 py-1.5">
+                <Icon name="Lock" size={13} />
+                Войти
+              </button>
+            )}
+          </div>
+          {/* Мобильная кнопка */}
+          <div className="md:hidden">
+            {isAdmin ? (
+              <button onClick={logout} className="flex items-center gap-1 text-sm text-primary/70 hover:text-primary transition-colors">
+                <Icon name="LogOut" size={18} />
+              </button>
+            ) : (
+              <button onClick={() => setLoginOpen(true)} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors">
+                <Icon name="Lock" size={18} />
               </button>
             )}
           </div>
