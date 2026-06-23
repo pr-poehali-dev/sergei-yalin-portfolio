@@ -403,7 +403,7 @@ const Index = () => {
                       {isAdmin && (
                         <button
                           onClick={() => deleteTrack(t.id)}
-                          className="opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+                          className="text-muted-foreground hover:text-destructive transition-colors"
                         >
                           <Icon name="Trash2" size={15} />
                         </button>
@@ -475,7 +475,7 @@ const Index = () => {
                       {isAdmin && (
                         <button
                           onClick={(e) => { e.stopPropagation(); deletePost(post.id); }}
-                          className="mt-1 opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+                          className="mt-1 text-muted-foreground hover:text-destructive transition-colors"
                         >
                           <Icon name="Trash2" size={16} />
                         </button>
