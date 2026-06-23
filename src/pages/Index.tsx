@@ -257,12 +257,14 @@ const Index = () => {
           {/* Мобильная кнопка */}
           <div className="md:hidden">
             {isAdmin ? (
-              <button onClick={logout} className="flex items-center gap-1 text-sm text-primary/70 hover:text-primary transition-colors">
-                <Icon name="LogOut" size={18} />
+              <button onClick={logout} className="flex items-center gap-2 text-sm text-primary/80 border border-primary/40 rounded-full px-3 py-1.5 transition-colors">
+                <Icon name="LogOut" size={15} />
+                Выйти
               </button>
             ) : (
-              <button onClick={() => setLoginOpen(true)} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors">
-                <Icon name="Lock" size={18} />
+              <button onClick={() => setLoginOpen(true)} className="flex items-center gap-2 text-sm text-white border border-white/30 rounded-full px-3 py-1.5 bg-white/10 backdrop-blur-sm transition-colors active:bg-white/20">
+                <Icon name="Lock" size={15} />
+                Войти
               </button>
             )}
           </div>
