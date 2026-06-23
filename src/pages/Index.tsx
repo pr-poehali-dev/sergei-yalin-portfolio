@@ -242,14 +242,16 @@ const Index = () => {
                 {n.label}
               </button>
             ))}
+          </div>
+          <div className="flex items-center gap-3">
             {isAdmin ? (
               <button onClick={logout} className="flex items-center gap-1 text-sm text-primary/60 hover:text-primary transition-colors">
                 <Icon name="LogOut" size={15} />
-                Выйти
+                <span className="hidden md:inline">Выйти</span>
               </button>
             ) : (
               <button onClick={() => setLoginOpen(true)} className="flex items-center gap-1 text-sm text-muted-foreground/40 hover:text-muted-foreground transition-colors">
-                <Icon name="Lock" size={14} />
+                <Icon name="Lock" size={16} />
               </button>
             )}
           </div>
