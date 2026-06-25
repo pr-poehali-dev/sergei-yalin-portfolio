@@ -17,6 +17,13 @@
       "bodyMatcher": "partial"
     }
   ,{
+      "name": "Get gallery",
+      "method": "GET",
+      "path": "/?resource=gallery",
+      "expectedStatus": 200,
+      "expectedBody": {"photos": []},
+      "bodyMatcher": "partial"
+    },{
       "name": "Get bio",
       "method": "GET",
       "path": "/?resource=bio",

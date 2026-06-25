@@ -93,6 +93,10 @@ const Index = () => {
   const [blogImage, setBlogImage] = useState<{ b64: string; mime: string; preview: string } | null>(null);
   const blogImageRef = useRef<HTMLInputElement>(null);
 
+  const [photos, setPhotos] = useState<{ id: number; url: string; caption: string }[]>([]);
+  const [galleryUploading, setGalleryUploading] = useState(false);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+
   const [adminToken, setAdminToken] = useState(() => sessionStorage.getItem('admin_token') || '');
   const [loginOpen, setLoginOpen] = useState(false);
   const [loginInput, setLoginInput] = useState('');
@@ -115,6 +119,10 @@ const Index = () => {
     fetch(`${GET_TRACKS_URL}?resource=bio`)
       .then((r) => r.json())
       .then((data) => setBio(data.bio || ''));
+
+    fetch(`${GET_TRACKS_URL}?resource=gallery`)
+      .then((r) => r.json())
+      .then((data) => setPhotos(data.photos || []));
   }, []);
 
   const login = async () => {
@@ -357,13 +365,76 @@ const Index = () => {
 
       {/* GALLERY */}
       <section id="gallery" className="mx-auto max-w-5xl px-6 py-20">
-        <p className="mb-3 text-center text-sm uppercase tracking-[0.3em] text-primary/80">Галерея</p>
-        <h2 className="text-center font-display text-4xl md:text-5xl">Личные фото и портреты</h2>
-        <div className="mt-12 flex justify-center">
-          <div className="group overflow-hidden rounded-xl border border-primary/20 max-w-sm w-full">
-            <img src={PORTRAIT} alt="Сергей Ялин" className="h-72 w-full object-cover transition-transform duration-700 group-hover:scale-110" />
+        <div className="mb-12 flex items-end justify-between">
+          <div>
+            <p className="mb-3 text-sm uppercase tracking-[0.3em] text-primary/80">Галерея</p>
+            <h2 className="font-display text-4xl md:text-5xl">Личные фото и портреты</h2>
           </div>
+          {isAdmin && (
+            <button
+              onClick={() => galleryInputRef.current?.click()}
+              disabled={galleryUploading}
+              className="flex items-center gap-2 rounded-full border border-primary/40 px-4 py-2 text-sm text-primary/80 transition-colors hover:border-primary hover:text-primary disabled:opacity-50"
+            >
+              <Icon name={galleryUploading ? 'Loader2' : 'ImagePlus'} size={16} className={galleryUploading ? 'animate-spin' : ''} />
+              {galleryUploading ? 'Загрузка...' : 'Добавить фото'}
+            </button>
+          )}
         </div>
+        <input
+          ref={galleryInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            setGalleryUploading(true);
+            const b64 = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve((reader.result as string).split(',')[1]);
+              reader.readAsDataURL(file);
+            });
+            const res = await fetch(`${GET_TRACKS_URL}?resource=gallery`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
+              body: JSON.stringify({ image_b64: b64, image_mime: file.type }),
+            });
+            const data = await res.json();
+            if (data.ok) setPhotos((p) => [{ id: data.id, url: data.url, caption: '' }, ...p]);
+            setGalleryUploading(false);
+            e.target.value = '';
+          }}
+        />
+        {photos.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-primary/20 py-20 text-center text-muted-foreground">
+            <Icon name="Image" size={40} className="mx-auto mb-4 opacity-30" />
+            <p>{isAdmin ? 'Нажмите «Добавить фото» чтобы загрузить первое' : 'Фотографии скоро появятся...'}</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+            {photos.map((photo) => (
+              <div key={photo.id} className="group relative overflow-hidden rounded-xl border border-primary/20 aspect-square">
+                <img src={photo.url} alt={photo.caption || 'Фото'} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                {isAdmin && (
+                  <button
+                    onClick={async () => {
+                      await fetch(`${GET_TRACKS_URL}?resource=gallery`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
+                        body: JSON.stringify({ action: 'delete', id: photo.id }),
+                      });
+                      setPhotos((p) => p.filter((ph) => ph.id !== photo.id));
+                    }}
+                    className="absolute right-2 top-2 rounded-full bg-black/60 p-1.5 text-white transition-opacity md:opacity-0 md:group-hover:opacity-100 hover:bg-destructive"
+                  >
+                    <Icon name="Trash2" size={14} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* WORKS */}
