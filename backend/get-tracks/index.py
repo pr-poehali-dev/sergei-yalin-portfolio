@@ -3,7 +3,7 @@ import json
 import base64
 import uuid
 import boto3
-# redeploy: force-2
+# redeploy: force-3
 import psycopg2
 
 def handler(event: dict, context) -> dict:
@@ -26,6 +26,20 @@ def handler(event: dict, context) -> dict:
         headers = event.get('headers') or {}
         token = headers.get('X-Admin-Token') or headers.get('x-admin-token', '')
         return token == os.environ.get('ADMIN_PASSWORD', '')
+
+    # --- ВСЁ СРАЗУ (один запрос вместо четырёх) ---
+    if resource == 'all' and method == 'GET':
+        cur.execute(f"SELECT id, title, type, text, cdn_url FROM {schema}.tracks WHERE hidden IS NOT TRUE ORDER BY created_at DESC")
+        tracks = [{'id': r[0], 'title': r[1], 'type': r[2], 'text': r[3], 'url': r[4]} for r in cur.fetchall()]
+        cur.execute(f"SELECT id, title, content, image_url, created_at FROM {schema}.blog_posts ORDER BY created_at DESC")
+        posts = [{'id': r[0], 'title': r[1], 'content': r[2], 'image_url': r[3], 'created_at': r[4].isoformat()} for r in cur.fetchall()]
+        cur.execute(f"SELECT value FROM {schema}.site_settings WHERE key = 'bio'")
+        bio_row = cur.fetchone()
+        cur.execute(f"SELECT id, url, caption FROM {schema}.gallery ORDER BY created_at DESC")
+        photos = [{'id': r[0], 'url': r[1], 'caption': r[2]} for r in cur.fetchall()]
+        cur.close(); conn.close()
+        return {'statusCode': 200, 'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
+                'body': json.dumps({'tracks': tracks, 'posts': posts, 'bio': bio_row[0] if bio_row else '', 'photos': photos})}
 
     # --- ГАЛЕРЕЯ ---
     if resource == 'gallery':

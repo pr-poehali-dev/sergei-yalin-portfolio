@@ -1,12 +1,12 @@
 {
   "tests": [
     {
-      "name": "Get tracks list",
+      "name": "Get all data at once",
       "method": "GET",
-      "path": "/",
+      "path": "/?resource=all",
       "expectedStatus": 200,
       "bodyMatcher": "partial",
-      "expectedBody": {}
+      "expectedBody": {"tracks": [], "posts": [], "bio": ""}
     },
     {
       "name": "Get blog posts",

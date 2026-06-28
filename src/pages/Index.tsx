@@ -121,16 +121,16 @@ const Index = () => {
 
   useEffect(() => {
     const loadAll = async () => {
-      const [tracks, blog, bio, gallery] = await Promise.allSettled([
-        fetchWithRetry(GET_TRACKS_URL).then((r) => r.json()),
-        fetchWithRetry(`${GET_TRACKS_URL}?resource=blog`).then((r) => r.json()),
-        fetchWithRetry(`${GET_TRACKS_URL}?resource=bio`).then((r) => r.json()),
-        fetchWithRetry(`${GALLERY_URL}?resource=gallery`).then((r) => r.json()),
-      ]);
-      if (tracks.status === 'fulfilled') setTracks(tracks.value.tracks || []);
-      if (blog.status === 'fulfilled') setPosts(blog.value.posts || []);
-      if (bio.status === 'fulfilled') setBio(bio.value.bio || '');
-      if (gallery.status === 'fulfilled') setPhotos(gallery.value.photos || []);
+      try {
+        const res = await fetchWithRetry(`${GET_TRACKS_URL}?resource=all`);
+        const data = await res.json();
+        setTracks(data.tracks || []);
+        setPosts(data.posts || []);
+        setBio(data.bio || '');
+        setPhotos(data.photos || []);
+      } catch {
+        // ignore
+      }
       setLoading(false);
     };
     loadAll();
