@@ -38,6 +38,7 @@ const nav = [
 
 const GET_TRACKS_URL = 'https://functions.poehali.dev/2bc5f2f3-4a26-4ed3-89d2-76c4ea5b3df0';
 const UPLOAD_URL = 'https://functions.poehali.dev/7e4157c5-edf3-4ca4-a0dd-965a1286a5a0';
+const GALLERY_URL = 'https://functions.poehali.dev/0a5e2867-4697-442f-949a-3d22bf2abb58';
 const CHUNK_SIZE = 700 * 1024; // 700KB — вмещается в лимит запроса после base64
 
 async function uploadMusicFile(file: File, title: string, text: string, token: string): Promise<{ id: number; title: string; type: string; text: string; url: string }> {
@@ -124,7 +125,7 @@ const Index = () => {
         fetchWithRetry(GET_TRACKS_URL).then((r) => r.json()),
         fetchWithRetry(`${GET_TRACKS_URL}?resource=blog`).then((r) => r.json()),
         fetchWithRetry(`${GET_TRACKS_URL}?resource=bio`).then((r) => r.json()),
-        fetchWithRetry(`${GET_TRACKS_URL}?resource=gallery`).then((r) => r.json()),
+        fetchWithRetry(`${GALLERY_URL}?resource=gallery`).then((r) => r.json()),
       ]);
       if (tracks.status === 'fulfilled') setTracks(tracks.value.tracks || []);
       if (blog.status === 'fulfilled') setPosts(blog.value.posts || []);
@@ -413,7 +414,7 @@ const Index = () => {
               reader.onload = () => resolve((reader.result as string).split(',')[1]);
               reader.readAsDataURL(file);
             });
-            const res = await fetch(`${GET_TRACKS_URL}?resource=gallery`, {
+            const res = await fetch(`${GALLERY_URL}?resource=gallery`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
               body: JSON.stringify({ image_b64: b64, image_mime: file.type }),
@@ -437,7 +438,7 @@ const Index = () => {
                 {isAdmin && (
                   <button
                     onClick={async () => {
-                      await fetch(`${GET_TRACKS_URL}?resource=gallery`, {
+                      await fetch(`${GALLERY_URL}?resource=gallery`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
                         body: JSON.stringify({ action: 'delete', id: photo.id }),

@@ -49,17 +49,55 @@ def parse_multipart(event):
     return fields, file_data, file_name
 
 def handler(event: dict, context) -> dict:
-    """Принимает multipart/form-data с аудиофайлом, загружает в S3 и сохраняет трек в БД."""
+    """Загрузка треков и фото галереи в S3, сохранение в БД."""
     if event.get('httpMethod') == 'OPTIONS':
         return {
             'statusCode': 200,
             'headers': {
                 'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'POST, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type',
+                'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Token',
             },
             'body': ''
         }
+
+    # --- ГАЛЕРЕЯ: загрузка и удаление фото ---
+    params = event.get('queryStringParameters') or {}
+    if params.get('resource') == 'gallery':
+        h = event.get('headers') or {}
+        token = h.get('X-Admin-Token') or h.get('x-admin-token', '')
+        if token != os.environ.get('ADMIN_PASSWORD', ''):
+            return {'statusCode': 403, 'headers': {'Access-Control-Allow-Origin': '*'}, 'body': json.dumps({'error': 'Неверный пароль'})}
+
+        body = json.loads(event.get('body') or '{}')
+        schema = os.environ['MAIN_DB_SCHEMA']
+        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        cur = conn.cursor()
+
+        if body.get('action') == 'delete':
+            cur.execute(f"DELETE FROM {schema}.gallery WHERE id = %s", (body.get('id'),))
+            conn.commit(); cur.close(); conn.close()
+            return {'statusCode': 200, 'headers': {'Access-Control-Allow-Origin': '*'}, 'body': json.dumps({'ok': True})}
+
+        image_b64 = body.get('image_b64', '')
+        image_mime = body.get('image_mime', 'image/jpeg')
+        if not image_b64:
+            cur.close(); conn.close()
+            return {'statusCode': 400, 'headers': {'Access-Control-Allow-Origin': '*'}, 'body': json.dumps({'error': 'Нет фото'})}
+
+        s3 = boto3.client('s3', endpoint_url='https://bucket.poehali.dev',
+            aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
+            aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'])
+        ext = image_mime.split('/')[-1].replace('jpeg', 'jpg')
+        key = f'gallery/{uuid.uuid4()}.{ext}'
+        s3.put_object(Bucket='files', Key=key, Body=base64.b64decode(image_b64), ContentType=image_mime)
+        url = f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{key}"
+
+        cur.execute(f"INSERT INTO {schema}.gallery (url, caption) VALUES (%s, %s) RETURNING id", (url, ''))
+        row = cur.fetchone()
+        conn.commit(); cur.close(); conn.close()
+        return {'statusCode': 200, 'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
+                'body': json.dumps({'ok': True, 'id': row[0], 'url': url})}
 
     content_type = ''
     for k, v in (event.get('headers') or {}).items():
