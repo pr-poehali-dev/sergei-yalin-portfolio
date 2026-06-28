@@ -3,7 +3,7 @@ import json
 import base64
 import uuid
 import boto3
-# redeploy: force-3
+# redeploy: force-4
 import psycopg2
 
 def handler(event: dict, context) -> dict:
