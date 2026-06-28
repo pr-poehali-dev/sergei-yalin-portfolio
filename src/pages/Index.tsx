@@ -106,23 +106,33 @@ const Index = () => {
   const navigate = useNavigate();
   const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
 
+  const fetchWithRetry = async (url: string, retries = 3, delay = 1000): Promise<Response> => {
+    for (let i = 0; i < retries; i++) {
+      try {
+        const res = await fetch(url);
+        if (res.ok) return res;
+      } catch {
+        if (i < retries - 1) await new Promise((r) => setTimeout(r, delay * (i + 1)));
+      }
+    }
+    return fetch(url);
+  };
+
   useEffect(() => {
-    fetch(GET_TRACKS_URL)
-      .then((r) => r.json())
-      .then((data) => setTracks(data.tracks || []))
-      .finally(() => setLoading(false));
-
-    fetch(`${GET_TRACKS_URL}?resource=blog`)
-      .then((r) => r.json())
-      .then((data) => setPosts(data.posts || []));
-
-    fetch(`${GET_TRACKS_URL}?resource=bio`)
-      .then((r) => r.json())
-      .then((data) => setBio(data.bio || ''));
-
-    fetch(`${GET_TRACKS_URL}?resource=gallery`)
-      .then((r) => r.json())
-      .then((data) => setPhotos(data.photos || []));
+    const loadAll = async () => {
+      const [tracks, blog, bio, gallery] = await Promise.allSettled([
+        fetchWithRetry(GET_TRACKS_URL).then((r) => r.json()),
+        fetchWithRetry(`${GET_TRACKS_URL}?resource=blog`).then((r) => r.json()),
+        fetchWithRetry(`${GET_TRACKS_URL}?resource=bio`).then((r) => r.json()),
+        fetchWithRetry(`${GET_TRACKS_URL}?resource=gallery`).then((r) => r.json()),
+      ]);
+      if (tracks.status === 'fulfilled') setTracks(tracks.value.tracks || []);
+      if (blog.status === 'fulfilled') setPosts(blog.value.posts || []);
+      if (bio.status === 'fulfilled') setBio(bio.value.bio || '');
+      if (gallery.status === 'fulfilled') setPhotos(gallery.value.photos || []);
+      setLoading(false);
+    };
+    loadAll();
   }, []);
 
   const login = async () => {
