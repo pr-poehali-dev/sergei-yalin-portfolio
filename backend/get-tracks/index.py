@@ -6,7 +6,7 @@ import boto3
 import psycopg2
 
 def handler(event: dict, context) -> dict:
-    """Возвращает треки/стихи и управляет постами блога (с фото)."""
+    """Возвращает треки/стихи, галерею, биографию и управляет постами блога."""
     if event.get('httpMethod') == 'OPTIONS':
         return {'statusCode': 200, 'headers': {
             'Access-Control-Allow-Origin': '*',
