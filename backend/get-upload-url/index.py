@@ -1,5 +1,6 @@
 import os
 import json
+# redeploy: force-1
 import uuid
 import boto3
 import psycopg2
