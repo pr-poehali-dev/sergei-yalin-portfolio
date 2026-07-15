@@ -140,17 +140,15 @@ const Index = () => {
     if (!loginInput.trim()) return;
     setLoginError('');
     try {
-      const res = await fetch(`${GET_TRACKS_URL}?resource=bio`, {
+      const res = await fetch(`${GET_TRACKS_URL}?resource=login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Admin-Token': loginInput },
-        body: JSON.stringify({ bio: '__check__' }),
+        body: JSON.stringify({}),
       });
       if (res.status === 403) {
         setLoginError('Неверный пароль');
         return;
       }
-      // Восстанавливаем биографию (отменяем тестовую запись)
-      fetch(`${GET_TRACKS_URL}?resource=bio`).then(r => r.json()).then(d => setBio(d.bio || ''));
     } catch {
       // Бэкенд недоступен — сохраняем токен локально, проверка пройдёт при следующем действии
     }

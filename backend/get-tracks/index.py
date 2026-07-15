@@ -27,6 +27,13 @@ def handler(event: dict, context) -> dict:
         token = headers.get('X-Admin-Token') or headers.get('x-admin-token', '')
         return token == os.environ.get('ADMIN_PASSWORD', '')
 
+    # --- ПРОВЕРКА ПАРОЛЯ (без побочных эффектов) ---
+    if resource == 'login' and method == 'POST':
+        ok = check_auth()
+        cur.close(); conn.close()
+        return {'statusCode': 200 if ok else 403, 'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
+                'body': json.dumps({'ok': ok})}
+
     # --- ВСЁ СРАЗУ (один запрос вместо четырёх) ---
     if resource == 'all' and method == 'GET':
         cur.execute(f"SELECT id, title, type, text, cdn_url FROM {schema}.tracks WHERE hidden IS NOT TRUE ORDER BY created_at DESC")
